@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react"
 import Input from "../../components/Input"
 import Button from "../../components/Button"
-import { InitializeStorage, ReadLoadedImage } from "../../../wailsjs/go/main/App"
+import { InitializeStorage, ReadLoadedImage, CloseSession } from "../../../wailsjs/go/main/App"
 import { usePath } from "crossroad"
-import { useLoadedImageState } from "../../store"
+import { useLoadedImageState, useLoginPanelState, useRulesetPanelState } from "../../store"
 import { useConfirm } from "../../components/Confirm"
 import useFocusTrap from "../../components/FocusTrap"
 
@@ -74,6 +74,14 @@ export default function EncryptText() {
 		}
 	}
 
+	async function handleRelease() {
+		await CloseSession()
+		useLoadedImageState.setState({ binary: null })
+		useLoginPanelState.setState({ isOpen: false })
+		useRulesetPanelState.setState({ isOpen: false })
+		setPath("/", { mode: "replace" })
+	}
+
 	useEffect(() => {
 		useFocusTrap("#encrypt")
 		if (!binary) {
@@ -110,6 +118,9 @@ export default function EncryptText() {
 			<Button onClick={handleSubmit} className="submit-button">
 				Submit
 			</Button>
+			<button className="option-btn gradient-text" onClick={handleRelease}>
+				Choose a different file
+			</button>
 		</div>
 	)
 }

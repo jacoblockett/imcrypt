@@ -710,7 +710,7 @@ input[type="date"] + .action-button-wrapper svg {
 
 	.input-container,
 	.submit-button {
-		margin-top: 1.75em;
+		margin-top: 1em;
 		width: 300px;
 		height: 40px;
 	}
@@ -719,10 +719,9 @@ input[type="date"] + .action-button-wrapper svg {
 		background-color: $primary-dark;
 	}
 
-	a {
-		font-size: 0.75em;
-		margin-top: calc(3.5em - 20px);
-		padding: 10px;
+	.option-btn {
+		margin-top: 0.8em;
+		font-size: 0.8em;
 	}
 }
 
