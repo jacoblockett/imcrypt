@@ -8,7 +8,8 @@ import {
 	UpdateGroupsById,
 	DeleteGroupsById,
 	ValidatePassword,
-	GeneratePassword
+	GeneratePassword,
+	GetFaviconURL
 } from "../wailsjs/go/main/App"
 import isEqual from "lodash.isequal"
 import { sortString } from "./utils"
@@ -330,16 +331,19 @@ export const useDatabaseState = create((set, get) => ({
 }))
 
 export const useFaviconCache = create((set, get) => ({
-	checkedSites: [], // { website string, isFallback: boolean },
-	isFallback: website => {
-		const match = get().checkedSites.find(s => s.website === website)
+	cache: new Map(),
+	getFavicon: async website => {
+		const cache = get().cache
+		const found = cache.get(website)
 
-		if (!match || match.isFallback) return true
+		if (found) return found
 
-		return false
-	},
-	hasBeenChecked: website => {
-		return get().checkedSites.find(s => s.website === website)
+		const [err, src] = await GetFaviconURL(website)
+		const result = { src, exists: !err }
+
+		cache.set(website, result)
+
+		return result
 	}
 }))
 

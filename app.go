@@ -13,12 +13,17 @@ import (
 	"imcrypt_v3/backend/generate"
 	"imcrypt_v3/backend/key"
 	"imcrypt_v3/backend/storage"
-	"imcrypt_v3/backend/utils"
+	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
+	"sort"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
+
+	"golang.org/x/net/html"
 
 	"github.com/cli/browser"
 	gonanoid "github.com/matoous/go-nanoid/v2"
@@ -606,19 +611,129 @@ func (a *App) OpenURLInBrowser(url string) {
 	}
 }
 
-// API: Checks if given URL for Favicon matches fallback image
-func (a *App) CheckIfFallbackFavicon(url string) []any {
-	fallback, err := utils.FetchImageBase64FromURL("https://t3.gstatic.com/faviconV2")
+type iconCandidate struct {
+	href string
+	typ  string // filetype
+	size int    // max size in either direction, e.g., 16 for 16x16
+}
+
+func parseSize(s string) int {
+	parts := strings.Split(s, "x")
+	if len(parts) != 2 {
+		return 0
+	}
+	w, err1 := strconv.Atoi(parts[0])
+	h, err2 := strconv.Atoi(parts[1])
+	if err1 != nil || err2 != nil {
+		return 0
+	}
+	if w > h {
+		return w
+	}
+	return h
+}
+
+// API: Gets the favicon of a given website, in a hopefully smart manner
+func (a *App) GetFaviconURL(pageURL string) []any {
+	if !strings.HasPrefix(pageURL, "http") {
+		pageURL = "https://" + pageURL
+	}
+	resp, err := http.Get(pageURL)
 	if err != nil {
-		return []any{true, err.Error()}
+		return []any{err, ""}
+	}
+	defer resp.Body.Close()
+
+	base, err := url.Parse(pageURL)
+	if err != nil {
+		return []any{err, ""}
 	}
 
-	given, err := utils.FetchImageBase64FromURL(fmt.Sprintf("https://www.google.com/s2/favicons?domain=%s", url))
-	if err != nil {
-		return []any{true, err.Error()}
+	var icons []iconCandidate
+
+	z := html.NewTokenizer(resp.Body)
+	for {
+		tt := z.Next()
+		if tt == html.ErrorToken {
+			break
+		}
+		t := z.Token()
+		if t.Data == "link" {
+			isIcon := false
+			icon := iconCandidate{}
+			for _, a := range t.Attr {
+				if a.Key == "rel" && strings.Contains(strings.ToLower(a.Val), "icon") {
+					isIcon = true
+				}
+				if a.Key == "href" {
+					icon.href = a.Val
+				}
+				if a.Key == "type" {
+					icon.typ = strings.ToLower(a.Val)
+				}
+				if a.Key == "sizes" {
+					// Prefer largest size in sizes="32x32 16x16"
+					for _, s := range strings.Fields(a.Val) {
+						size := parseSize(s)
+						if size > icon.size {
+							icon.size = size
+						}
+					}
+				}
+			}
+			if isIcon && icon.href != "" {
+				icons = append(icons, icon)
+			}
+		}
 	}
 
-	return []any{fallback == given, nil}
+	// Priority: SVG > PNG > ICO > anything, largest size > smaller
+	sort.SliceStable(icons, func(i, j int) bool {
+		if icons[i].size != icons[j].size {
+			return icons[i].size > icons[j].size // prefer larger
+		}
+
+		if icons[i].typ == "image/svg+xml" && icons[j].typ != "image/svg+xml" {
+			return true
+		}
+		if icons[i].typ != "image/svg+xml" && icons[j].typ == "image/svg+xml" {
+			return false
+		}
+		if icons[i].typ == "image/png" && icons[j].typ != "image/png" {
+			return true
+		}
+		if icons[i].typ != "image/png" && icons[j].typ == "image/png" {
+			return false
+		}
+		if icons[i].typ == "image/x-icon" && icons[j].typ != "image/x-icon" {
+			return true
+		}
+		if icons[i].typ != "image/x-icon" && icons[j].typ == "image/x-icon" {
+			return false
+		}
+		// fallback: order as-is
+		return false
+	})
+
+	if len(icons) > 0 {
+		iconHref := icons[0].href
+		iconURL, err := url.Parse(iconHref)
+		if err == nil {
+			return []any{nil, base.ResolveReference(iconURL).String()}
+		}
+	}
+
+	// Fallback to /favicon.ico at root with existence check
+	base.Path = "/favicon.ico"
+	base.RawQuery = ""
+	base.Fragment = ""
+	faviconURL := base.String()
+	resp, err = http.Get(faviconURL)
+	if err != nil || resp.StatusCode != http.StatusOK {
+		return []any{fmt.Errorf("favicon not found at %s", faviconURL), ""}
+	}
+	defer resp.Body.Close()
+	return []any{nil, faviconURL}
 }
 
 // Helper: Gets the file descriptor, storage, and database off of the temp file

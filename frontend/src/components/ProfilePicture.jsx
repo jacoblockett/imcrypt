@@ -1,36 +1,28 @@
-import { useLayoutEffect } from "react"
-import { CheckIfFallbackFavicon } from "../../wailsjs/go/main/App"
+import { useLayoutEffect, useState } from "react"
 import { useFaviconCache } from "../store"
 
 function ProfilePicture({ website, title }) {
 	const faviconCache = useFaviconCache()
+	const [favicon, setFavicon] = useState({ src: "", exists: false })
 
-	async function checkIfFallbackFavicon(website) {
-		if (faviconCache.hasBeenChecked(website)) return
+	async function getFavicon() {
+		const result = await faviconCache.getFavicon(website)
 
-		const [result] = await CheckIfFallbackFavicon(website)
-
-		useFaviconCache.setState({
-			checkedSites: [...useFaviconCache.getState().checkedSites, { website, isFallback: result }]
-		})
+		setFavicon(result)
 	}
 
 	useLayoutEffect(() => {
 		if (website && navigator.onLine) {
-			checkIfFallbackFavicon(website)
+			getFavicon()
 		}
 	}, [website])
 
 	return (
-		<div className={`pfp${!navigator.onLine || faviconCache.isFallback(website) ? " with-bg" : ""}`}>
-			{!navigator.onLine || faviconCache.isFallback(website) ? (
+		<div className={`pfp${!navigator.onLine || !favicon.exists ? " with-bg" : ""}`}>
+			{!navigator.onLine || !favicon.exists ? (
 				title[0].toUpperCase()
 			) : (
-				<img
-					src={`https://www.google.com/s2/favicons?domain=${website}&sz=256`}
-					alt={`${website} favicon`}
-					draggable={false}
-				/>
+				<img src={favicon.src} alt={`${website} favicon`} draggable={false} />
 			)}
 		</div>
 	)
