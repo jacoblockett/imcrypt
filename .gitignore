@@ -1,3 +1,4 @@
+# Don't not include build. It contains important files for building from source
 build/bin
 node_modules
 frontend/dist
