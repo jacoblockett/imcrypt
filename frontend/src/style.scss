@@ -50,6 +50,7 @@ u {
 
 html,
 body {
+	height: 100%;
 	overflow: hidden;
 }
 
@@ -938,7 +939,7 @@ input[type="date"] + .action-button-wrapper svg {
 	.nav-panel {
 		display: flex;
 		flex-direction: column;
-		height: 100%;
+		height: 100vh;
 		padding: 0.85em;
 		position: relative;
 
@@ -1333,346 +1334,56 @@ input[type="date"] + .action-button-wrapper svg {
 				}
 			}
 		}
-	}
 
-	.panel-container {
-		position: fixed;
-		top: 0;
-		right: -100vw;
-		height: 100vh;
-		width: 100vw;
-		background-color: rgba(0, 0, 0, 0.22);
-
-		.panel {
+		.panel-container {
 			position: fixed;
-			right: -63vw;
-			width: 63vw;
-			height: 100%;
-			background-color: $background-light;
-			overflow-y: scroll;
-			scrollbar-color: $primary-darker $input-background;
-			transition: right 0.15s;
+			top: 0;
+			right: -100vw;
+			height: 100vh;
+			width: 100vw;
+			background-color: rgba(0, 0, 0, 0.22);
 
-			.panel-action-bar {
-				position: sticky;
-				display: flex;
-				justify-content: space-between;
-				align-items: center;
-				width: 100%;
-				height: 5em;
-				margin-bottom: 2rem;
-				top: 0;
+			.panel {
+				position: fixed;
+				right: -63vw;
+				width: 63vw;
+				height: 100%;
 				background-color: $background-light;
-				z-index: 1;
-				padding: 0 2.25rem;
+				overflow-y: scroll;
+				scrollbar-color: $primary-darker $input-background;
+				transition: right 0.15s;
 
-				&.with-scroll {
-					box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
-				}
-
-				.close-panel-btn {
-					background-color: $input-background;
-					width: 30px;
-					height: 30px;
-					padding: 0.325em;
-					border-radius: 100px;
-
-					svg {
-						transform: rotate(45deg);
-						height: 100%;
-						width: 100%;
-
-						path {
-							stroke: $primary;
-						}
-					}
-
-					&:hover,
-					&:focus:not(:active) {
-						filter: brightness(1.4);
-					}
-
-					&:active {
-						filter: brightness(1.1);
-					}
-				}
-
-				.title {
-					position: absolute;
-					left: 50%;
-					top: 50%;
-					transform: translate(-50%, -50%);
-					font-size: 1.4rem;
-				}
-
-				.save-form-btn {
-					background-color: $primary-dark;
-					height: 2.25rem;
-					width: 5rem;
-
-					&:disabled {
-						background-color: $input-background;
-						color: $primary;
-						cursor: not-allowed;
-
-						&:hover,
-						&:focus,
-						&:active {
-							filter: none;
-						}
-					}
-				}
-			}
-
-			.form {
-				width: 100%;
-				position: relative;
-				padding: 0 2.25rem 1.5rem;
-
-				.required-note {
-					font-size: 0.65em;
-					color: $secondary;
-					position: absolute;
-					top: -2em;
-					right: 2.25rem;
-				}
-			}
-
-			&#login-panel .form {
-				.title-input,
-				.groups-input,
-				.email-input,
-				.username-input,
-				.password-field,
-				.website-field,
-				.tfa-input,
-				.notes-input {
-					margin-bottom: 1.25rem;
-					height: 2.55rem;
-					width: 100%;
-				}
-
-				.extend-btn {
-					$padding: 0.1rem;
-					$size: 1.2rem;
-					position: absolute;
-					width: $size;
-					height: $size;
-					background-color: $input-background-contrast;
-					padding: $padding;
-					border-radius: 100px;
-					z-index: 120;
-
-					svg {
-						path {
-							stroke: $primary;
-						}
-					}
-				}
-
-				.separator {
-					height: 2px;
-					width: 100%;
-					background-color: $input-background-contrast;
-					margin: 2rem 0 2.5rem;
-					position: relative;
-
-					.extend-btn {
-						top: 50%;
-						left: 50%;
-						transform: translate(-50%, -50%);
-					}
-				}
-
-				.email-input,
-				.username-input,
-				.website-field {
+				.panel-action-bar {
+					position: sticky;
 					display: flex;
-					position: relative;
+					justify-content: space-between;
+					align-items: center;
+					width: 100%;
+					height: 5em;
+					margin-bottom: 2rem;
+					top: 0;
+					background-color: $background-light;
+					z-index: 1;
+					padding: 0 2.25rem;
 
-					.email-input,
-					.website-input,
-					.username-input {
-						width: 100%;
+					&.with-scroll {
+						box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
 					}
 
-					.extend-btn {
-						top: 50%;
-						right: 0;
-						transform: translate(50%, -50%);
-					}
-				}
-
-				.password-field {
-					display: flex;
-
-					.password-input {
-						width: 100%;
-						margin-right: 8px;
-					}
-
-					.action-button-wrapper button svg {
-						width: 1rem;
-					}
-
-					.password-rules {
-						margin-left: auto;
-						background-color: $primary-dark;
-						padding-left: 1.5rem;
-						padding-right: 1.5rem;
-						font-size: 0.8rem;
-					}
-				}
-
-				.warnings-section {
-					.warnings-container {
-						background-color: $background;
-						padding: 1rem 0.6rem;
-						border-radius: 4px;
-
-						.warning {
-							display: flex;
-							align-items: center;
-							font-size: 0.7rem;
-
-							svg {
-								height: 1.25rem;
-								aspect-ratio: 1;
-								margin-right: 1em;
-
-								path {
-									stroke: $warn;
-								}
-							}
-
-							&:not(:first-child) {
-								margin-top: 0.5rem;
-							}
-						}
-					}
-				}
-
-				.rules-section {
-					margin-top: 1em;
-
-					.optional {
-						background-color: $background;
-						display: inline-flex;
-						flex-direction: column;
-						align-items: center;
-						padding: 0.6rem 1rem;
-						border-radius: 4px 4px 0 0;
-						position: relative;
-
-						span {
-							font-size: 0.7rem;
-						}
-
-						.line {
-							position: absolute;
-							height: 1px;
-							width: 85%;
-							background-color: $background-light;
-							bottom: 0;
-							filter: brightness(1.4);
-						}
-					}
-
-					.rules-container {
-						background-color: $background;
-						padding: 1rem 0.6rem;
-						border-radius: 0 4px 4px;
-
-						.rule {
-							display: flex;
-
-							.left {
-								display: flex;
-								align-items: center;
-								align-self: flex-start;
-								font-size: 0.7rem;
-
-								.mark {
-									height: 1.5rem;
-									width: 1.5rem;
-									display: flex;
-									justify-content: center;
-									align-items: center;
-
-									svg {
-										height: 100%;
-										width: 100%;
-									}
-
-									.icon-x-mark {
-										path {
-											stroke: $accent;
-										}
-									}
-
-									.icon-check-mark {
-										height: 85%;
-										width: 85%;
-
-										path {
-											stroke: $success;
-										}
-									}
-								}
-							}
-
-							.right {
-								font-size: 0.7rem;
-								width: 60%;
-								margin-left: auto;
-								background-color: $background-light;
-								overflow-wrap: anywhere;
-								padding: 0.75rem;
-								border-radius: 4px;
-							}
-
-							&.with-right .left {
-								padding-top: 0.425rem;
-							}
-
-							// every .with-right other than the first.
-							// these css selector antics are starting to fuck with me...
-							&.with-right ~ .with-right {
-								margin-top: 0.5rem;
-							}
-						}
-
-						hr {
-							height: 1px;
-							background-color: $background-light;
-							filter: brightness(1.4);
-							margin-top: 0.75rem;
-							margin-bottom: 0.75rem;
-						}
-
-						.highlight {
-							color: $primary;
-						}
-					}
-				}
-
-				.website-field,
-				.username-field {
-					.delete-btn {
-						align-self: center;
-						margin-right: 10px;
+					.close-panel-btn {
 						background-color: $input-background;
-						height: 1.5rem;
-						width: 1.5rem;
+						width: 30px;
+						height: 30px;
+						padding: 0.325em;
 						border-radius: 100px;
-						padding: 0.1rem;
 
 						svg {
+							transform: rotate(45deg);
 							height: 100%;
 							width: 100%;
 
 							path {
-								stroke: $accent;
+								stroke: $primary;
 							}
 						}
 
@@ -1685,162 +1396,268 @@ input[type="date"] + .action-button-wrapper svg {
 							filter: brightness(1.1);
 						}
 					}
-				}
 
-				.notes-input {
-					height: 10em;
+					.title {
+						position: absolute;
+						left: 50%;
+						top: 50%;
+						transform: translate(-50%, -50%);
+						font-size: 1.4rem;
+					}
 
-					.icon,
-					label,
-					.placeholder {
-						top: 1.25em;
+					.save-form-btn {
+						background-color: $primary-dark;
+						height: 2.25rem;
+						width: 5rem;
+
+						&:disabled {
+							background-color: $input-background;
+							color: $primary;
+							cursor: not-allowed;
+
+							&:hover,
+							&:focus,
+							&:active {
+								filter: none;
+							}
+						}
 					}
 				}
-			}
 
-			&#ruleset-panel .form {
-				$spacing: 8px;
+				.form {
+					width: 100%;
+					position: relative;
+					padding: 0 2.25rem 1.5rem;
 
-				section {
-					display: flex;
-					flex-direction: column;
+					.required-note {
+						font-size: 0.65em;
+						color: $secondary;
+						position: absolute;
+						top: -2em;
+						right: 2.25rem;
+					}
+				}
 
-					// &:not(:first-of-type) {
-					// 	margin-top: 2.5rem;
-					// }
-
-					.name-container {
+				&#login-panel .form {
+					.title-input,
+					.groups-input,
+					.email-input,
+					.username-input,
+					.password-field,
+					.website-field,
+					.tfa-input,
+					.notes-input {
+						margin-bottom: 1.25rem;
+						height: 2.55rem;
 						width: 100%;
-						display: flex;
-						align-items: center;
+					}
 
-						.ruleset-name,
-						.charset-name {
+					.extend-btn {
+						$padding: 0.1rem;
+						$size: 1.2rem;
+						position: absolute;
+						width: $size;
+						height: $size;
+						background-color: $input-background-contrast;
+						padding: $padding;
+						border-radius: 100px;
+						z-index: 120;
+
+						svg {
+							path {
+								stroke: $primary;
+							}
+						}
+					}
+
+					.separator {
+						height: 2px;
+						width: 100%;
+						background-color: $input-background-contrast;
+						margin: 2rem 0 2.5rem;
+						position: relative;
+
+						.extend-btn {
+							top: 50%;
+							left: 50%;
+							transform: translate(-50%, -50%);
+						}
+					}
+
+					.email-input,
+					.username-input,
+					.website-field {
+						display: flex;
+						position: relative;
+
+						.email-input,
+						.website-input,
+						.username-input {
 							width: 100%;
 						}
 
-						.load-preset-btn {
-							font-size: 0.8rem;
+						.extend-btn {
+							top: 50%;
+							right: 0;
+							transform: translate(50%, -50%);
+						}
+					}
+
+					.password-field {
+						display: flex;
+
+						.password-input {
+							width: 100%;
+							margin-right: 8px;
+						}
+
+						.action-button-wrapper button svg {
+							width: 1rem;
+						}
+
+						.password-rules {
+							margin-left: auto;
 							background-color: $primary-dark;
-							width: 8rem;
-							height: 2.5rem;
-							margin-left: 0.75rem;
-						}
-					}
-
-					.save-template-btn {
-						font-size: 0.8rem;
-						background-color: $primary-dark;
-						margin-top: 1rem;
-						height: 2.5rem;
-					}
-
-					hr {
-						height: 0.1rem;
-						width: 100%;
-						background-color: $input-background-contrast;
-						margin: 1.5rem 0;
-					}
-
-					.general-rule {
-						width: 100%;
-						display: flex;
-						align-items: center;
-
-						.question {
+							padding-left: 1.5rem;
+							padding-right: 1.5rem;
 							font-size: 0.8rem;
-							width: 8rem;
 						}
+					}
 
-						.answer {
-							margin-left: 1.5rem;
-							display: flex;
+					.warnings-section {
+						.warnings-container {
+							background-color: $background;
+							padding: 1rem 0.6rem;
+							border-radius: 4px;
+
+							.warning {
+								display: flex;
+								align-items: center;
+								font-size: 0.7rem;
+
+								svg {
+									height: 1.25rem;
+									aspect-ratio: 1;
+									margin-right: 1em;
+
+									path {
+										stroke: $warn;
+									}
+								}
+
+								&:not(:first-child) {
+									margin-top: 0.5rem;
+								}
+							}
+						}
+					}
+
+					.rules-section {
+						margin-top: 1em;
+
+						.optional {
+							background-color: $background;
+							display: inline-flex;
+							flex-direction: column;
 							align-items: center;
-							height: 3em;
+							padding: 0.6rem 1rem;
+							border-radius: 4px 4px 0 0;
+							position: relative;
 
-							&.toggle button {
-								font-size: 0.85rem;
-								width: 3.5rem;
-
-								&:hover,
-								&:focus:not(:active) {
-									filter: brightness(1.2);
-								}
-
-								&:active {
-									filter: brightness(1.1);
-								}
+							span {
+								font-size: 0.7rem;
 							}
 
-							.password-ttl-number,
-							.password-ttl-dropdown {
-								margin-right: 0.75rem;
-							}
-
-							.password-ttl-number {
-								width: 4em;
-								font-size: 0.85;
-
-								input {
-									text-align: center;
-								}
-							}
-
-							.password-ttl-dropdown {
-								width: 7em;
-							}
-
-							.min,
-							.max {
-								width: 4rem;
-								font-size: 0.85rem;
-
-								input {
-									text-align: center;
-								}
-							}
-
-							.min ~ span {
-								margin-left: $spacing;
-								margin-right: $spacing;
+							.line {
+								position: absolute;
+								height: 1px;
+								width: 85%;
+								background-color: $background-light;
+								bottom: 0;
+								filter: brightness(1.4);
 							}
 						}
 
-						& ~ .general-rule {
-							margin-top: 1rem;
+						.rules-container {
+							background-color: $background;
+							padding: 1rem 0.6rem;
+							border-radius: 0 4px 4px;
+
+							.rule {
+								display: flex;
+
+								.left {
+									display: flex;
+									align-items: center;
+									align-self: flex-start;
+									font-size: 0.7rem;
+
+									.mark {
+										height: 1.5rem;
+										width: 1.5rem;
+										display: flex;
+										justify-content: center;
+										align-items: center;
+
+										svg {
+											height: 100%;
+											width: 100%;
+										}
+
+										.icon-x-mark {
+											path {
+												stroke: $accent;
+											}
+										}
+
+										.icon-check-mark {
+											height: 85%;
+											width: 85%;
+
+											path {
+												stroke: $success;
+											}
+										}
+									}
+								}
+
+								.right {
+									font-size: 0.7rem;
+									width: 60%;
+									margin-left: auto;
+									background-color: $background-light;
+									overflow-wrap: anywhere;
+									padding: 0.75rem;
+									border-radius: 4px;
+								}
+
+								&.with-right .left {
+									padding-top: 0.425rem;
+								}
+
+								// every .with-right other than the first.
+								// these css selector antics are starting to fuck with me...
+								&.with-right ~ .with-right {
+									margin-top: 0.5rem;
+								}
+							}
+
+							hr {
+								height: 1px;
+								background-color: $background-light;
+								filter: brightness(1.4);
+								margin-top: 0.75rem;
+								margin-bottom: 0.75rem;
+							}
+
+							.highlight {
+								color: $primary;
+							}
 						}
 					}
 
-					.container {
-						width: 100%;
-						display: flex;
-						align-items: center;
-					}
-
-					.character-set-input {
-						width: 100%;
-						margin-top: 1rem;
-						height: 5rem;
-
-						.icon,
-						label,
-						.placeholder {
-							top: 1.25em;
-						}
-					}
-
-					.init-constraints-btn {
-						background-color: $primary-dark;
-						font-size: 0.8rem;
-						height: 2.5rem;
-						align-self: flex-end;
-					}
-
-					.constraint {
-						width: 100%;
-						display: flex;
-						align-items: center;
-
+					.website-field,
+					.username-field {
 						.delete-btn {
 							align-self: center;
 							margin-right: 10px;
@@ -1868,567 +1685,778 @@ input[type="date"] + .action-button-wrapper svg {
 								filter: brightness(1.1);
 							}
 						}
+					}
 
-						.sentence {
-							height: 2.5rem;
+					.notes-input {
+						height: 10em;
+
+						.icon,
+						label,
+						.placeholder {
+							top: 1.25em;
+						}
+					}
+				}
+
+				&#ruleset-panel .form {
+					$spacing: 8px;
+
+					section {
+						display: flex;
+						flex-direction: column;
+
+						// &:not(:first-of-type) {
+						// 	margin-top: 2.5rem;
+						// }
+
+						.name-container {
 							width: 100%;
 							display: flex;
 							align-items: center;
 
-							span {
+							.ruleset-name,
+							.charset-name {
+								width: 100%;
+							}
+
+							.load-preset-btn {
 								font-size: 0.8rem;
-
-								&:not(:first-child) {
-									margin: $spacing;
-								}
-							}
-
-							.constraint-type {
-								margin-left: $spacing;
-								width: 17rem;
-								// max-width: 18rem;
-								height: 100%;
-
-								.selected-label {
-									font-size: 0.8rem;
-								}
-							}
-
-							.input-container.type-number {
-								margin-left: $spacing;
-								width: 4rem;
-								height: 100%;
-
-								input {
-									text-align: center;
-								}
+								background-color: $primary-dark;
+								width: 8rem;
+								height: 2.5rem;
+								margin-left: 0.75rem;
 							}
 						}
 
-						// Selects every not-first .constraint
-						& ~ .constraint {
-							margin-top: 0.65rem;
-						}
-
-						& ~ .init-constraints-btn {
+						.save-template-btn {
+							font-size: 0.8rem;
+							background-color: $primary-dark;
 							margin-top: 1rem;
+							height: 2.5rem;
+						}
+
+						hr {
+							height: 0.1rem;
+							width: 100%;
+							background-color: $input-background-contrast;
+							margin: 1.5rem 0;
+						}
+
+						.general-rule {
+							width: 100%;
+							display: flex;
+							align-items: center;
+
+							.question {
+								font-size: 0.8rem;
+								width: 8rem;
+							}
+
+							.answer {
+								margin-left: 1.5rem;
+								display: flex;
+								align-items: center;
+								height: 3em;
+
+								&.toggle button {
+									font-size: 0.85rem;
+									width: 3.5rem;
+
+									&:hover,
+									&:focus:not(:active) {
+										filter: brightness(1.2);
+									}
+
+									&:active {
+										filter: brightness(1.1);
+									}
+								}
+
+								.password-ttl-number,
+								.password-ttl-dropdown {
+									margin-right: 0.75rem;
+								}
+
+								.password-ttl-number {
+									width: 4em;
+									font-size: 0.85;
+
+									input {
+										text-align: center;
+									}
+								}
+
+								.password-ttl-dropdown {
+									width: 7em;
+								}
+
+								.min,
+								.max {
+									width: 4rem;
+									font-size: 0.85rem;
+
+									input {
+										text-align: center;
+									}
+								}
+
+								.min ~ span {
+									margin-left: $spacing;
+									margin-right: $spacing;
+								}
+							}
+
+							& ~ .general-rule {
+								margin-top: 1rem;
+							}
+						}
+
+						.container {
+							width: 100%;
+							display: flex;
+							align-items: center;
+						}
+
+						.character-set-input {
+							width: 100%;
+							margin-top: 1rem;
+							height: 5rem;
+
+							.icon,
+							label,
+							.placeholder {
+								top: 1.25em;
+							}
+						}
+
+						.init-constraints-btn {
+							background-color: $primary-dark;
+							font-size: 0.8rem;
+							height: 2.5rem;
+							align-self: flex-end;
+						}
+
+						.constraint {
+							width: 100%;
+							display: flex;
+							align-items: center;
+
+							.delete-btn {
+								align-self: center;
+								margin-right: 10px;
+								background-color: $input-background;
+								height: 1.5rem;
+								width: 1.5rem;
+								border-radius: 100px;
+								padding: 0.1rem;
+
+								svg {
+									height: 100%;
+									width: 100%;
+
+									path {
+										stroke: $accent;
+									}
+								}
+
+								&:hover,
+								&:focus:not(:active) {
+									filter: brightness(1.4);
+								}
+
+								&:active {
+									filter: brightness(1.1);
+								}
+							}
+
+							.sentence {
+								height: 2.5rem;
+								width: 100%;
+								display: flex;
+								align-items: center;
+
+								span {
+									font-size: 0.8rem;
+
+									&:not(:first-child) {
+										margin: $spacing;
+									}
+								}
+
+								.constraint-type {
+									margin-left: $spacing;
+									width: 17rem;
+									// max-width: 18rem;
+									height: 100%;
+
+									.selected-label {
+										font-size: 0.8rem;
+									}
+								}
+
+								.input-container.type-number {
+									margin-left: $spacing;
+									width: 4rem;
+									height: 100%;
+
+									input {
+										text-align: center;
+									}
+								}
+							}
+
+							// Selects every not-first .constraint
+							& ~ .constraint {
+								margin-top: 0.65rem;
+							}
+
+							& ~ .init-constraints-btn {
+								margin-top: 1rem;
+							}
 						}
 					}
 				}
 			}
-		}
 
-		&.visible {
-			right: 0vw;
-
-			.panel {
+			&.visible {
 				right: 0vw;
+
+				.panel {
+					right: 0vw;
+				}
 			}
 		}
-	}
 
-	.items-section {
-		height: 100%;
-		display: flex;
-		margin-top: 0.5em;
-
-		.item-select,
-		.item-view {
-			width: 50%;
+		.items-section {
 			height: 100%;
-		}
+			display: flex;
+			flex-direction: row;
+			margin-top: 0.5em;
 
-		.item-select {
-			.item-select-toolbar {
-				height: 2.25em;
+			.item-select,
+			.item-view {
+				flex: 1 1 0;
+				height: 100%;
 				display: flex;
-				align-items: center;
-				padding-left: 1em;
-				padding-right: 0.45em;
-				border-bottom: 1px solid $primary-darker;
+				flex-direction: column;
+			}
 
-				.select-all-button {
-					background-color: $checkbox-background;
-					padding: 0;
-					height: 0.95em;
-					border-radius: 2.5px;
-					aspect-ratio: 1;
+			.item-select {
+				.item-select-toolbar {
+					height: 2.25em;
+					display: flex;
+					align-items: center;
+					padding-left: 1em;
+					padding-right: 0.45em;
+					border-bottom: 1px solid $primary-darker;
 
-					svg {
-						height: 90%;
-						width: 90%;
-					}
+					.select-all-button {
+						background-color: $checkbox-background;
+						padding: 0;
+						height: 0.95em;
+						border-radius: 2.5px;
+						aspect-ratio: 1;
 
-					&.selected {
-						background-color: $primary-dark;
+						svg {
+							height: 90%;
+							width: 90%;
+						}
 
-						path {
-							stroke: $primary;
+						&.selected {
+							background-color: $primary-dark;
+
+							path {
+								stroke: $primary;
+							}
 						}
 					}
+
+					.items-selected-count {
+						font-size: 0.65em;
+						color: $text-darkest;
+						margin-left: 1em;
+					}
+
+					.filter-button,
+					.more-button {
+						border-radius: 100px;
+						height: 80%;
+						aspect-ratio: 1;
+						padding: 0.25em;
+
+						svg {
+							height: 70%;
+							width: 70%;
+
+							path {
+								stroke: $text;
+							}
+						}
+
+						&:hover,
+						&:focus:not(:active) {
+							filter: none;
+							background-color: $primary-darker;
+						}
+
+						&:active {
+							filter: brightness(0.85);
+						}
+					}
+
+					.filter-button {
+						margin-left: auto;
+					}
 				}
 
-				.items-selected-count {
-					font-size: 0.65em;
+				.items-list {
+					overflow-y: scroll;
+					scrollbar-color: $primary-darker $input-background;
+					flex: 1 1 0; /* This makes sure it grows and shrinks as needed */
+					min-height: 0; /* Prevents flex children from overflowing in Firefox */
+					overflow-y: auto; /* or 'scroll', but 'auto' usually looks better */
+				}
+
+				.no-results {
+					text-align: center;
+					margin-top: 1em;
 					color: $text-darkest;
-					margin-left: 1em;
 				}
 
-				.filter-button,
-				.more-button {
-					border-radius: 100px;
-					height: 80%;
-					aspect-ratio: 1;
-					padding: 0.25em;
+				.item-drag-count {
+					position: absolute;
+					top: -9999px;
+					left: -9999px;
+					background-color: $accent;
+					color: $text;
+					padding: 0.25em 0.75em;
+					border-radius: 4px;
+					z-index: 1000;
+					font-size: 0.65em;
+				}
 
-					svg {
-						height: 70%;
-						width: 70%;
+				.item {
+					height: 3.5em;
+					display: flex;
+					align-items: center;
+					padding: 0 1em;
+					cursor: pointer;
 
-						path {
-							stroke: $text;
+					.item-select-button {
+						background-color: $checkbox-background;
+						padding: 0;
+						height: 0.95em;
+						border-radius: 2.5px;
+						aspect-ratio: 1;
+
+						svg {
+							height: 90%;
+							width: 90%;
+						}
+
+						&.selected {
+							background-color: $primary-dark;
+
+							path {
+								stroke: $primary;
+							}
+						}
+					}
+
+					.pfp {
+						margin-left: 0.8em;
+						height: 65%;
+						aspect-ratio: 1;
+						display: flex;
+						justify-content: center;
+						align-items: center;
+						border-radius: 100px;
+						overflow: hidden;
+
+						img {
+							height: 100%;
+							aspect-ratio: 1;
+						}
+
+						&.with-bg {
+							background-color: $accent;
+						}
+					}
+
+					.details {
+						margin-left: 0.8em;
+						display: flex;
+						flex-direction: column;
+						justify-content: center;
+						height: 100%;
+
+						.title {
+							font-size: 0.85em;
+						}
+
+						.subtitle {
+							font-size: 0.65em;
+							color: $text;
+							opacity: 0.4;
+							margin-top: 5px;
 						}
 					}
 
 					&:hover,
-					&:focus:not(:active) {
-						filter: none;
-						background-color: $primary-darker;
+					&:focus {
+						background-color: $hovered-item;
 					}
 
 					&:active {
-						filter: brightness(0.85);
+						background-color: $active-item;
 					}
-				}
 
-				.filter-button {
-					margin-left: auto;
+					&.active {
+						background-color: $selected-item;
+					}
 				}
 			}
 
-			.no-results {
-				text-align: center;
-				margin-top: 1em;
-				color: $text-darkest;
-			}
+			.item-view {
+				border-left: 2px solid $primary-darker;
+				padding: 0.75em;
 
-			.item-drag-count {
-				position: absolute;
-				top: -9999px;
-				left: -9999px;
-				background-color: $accent;
-				color: $text;
-				padding: 0.25em 0.75em;
-				border-radius: 4px;
-				z-index: 1000;
-				font-size: 0.65em;
-			}
-
-			.item {
-				height: 3.5em;
-				display: flex;
-				align-items: center;
-				padding: 0 1em;
-				cursor: pointer;
-
-				.item-select-button {
-					background-color: $checkbox-background;
-					padding: 0;
-					height: 0.95em;
-					border-radius: 2.5px;
-					aspect-ratio: 1;
-
-					svg {
-						height: 90%;
-						width: 90%;
-					}
-
-					&.selected {
-						background-color: $primary-dark;
-
-						path {
-							stroke: $primary;
-						}
-					}
-				}
-
-				.pfp {
-					margin-left: 0.8em;
-					height: 65%;
-					aspect-ratio: 1;
+				.view-header {
 					display: flex;
-					justify-content: center;
 					align-items: center;
-					border-radius: 100px;
-					overflow: hidden;
-
-					img {
-						height: 100%;
-						aspect-ratio: 1;
-					}
-
-					&.with-bg {
-						background-color: $accent;
-					}
-				}
-
-				.details {
-					margin-left: 0.8em;
-					display: flex;
-					flex-direction: column;
-					justify-content: center;
-					height: 100%;
+					margin-bottom: 1em;
 
 					.title {
-						font-size: 0.85em;
+						font-size: 1.25em;
+						margin-left: 0.5em;
 					}
 
-					.subtitle {
-						font-size: 0.65em;
-						color: $text;
-						opacity: 0.4;
-						margin-top: 5px;
+					.edit-button {
+						margin-left: auto;
+						background-color: $primary-dark;
+						font-size: 0.8em;
+						width: 6em;
+						height: 3em;
+
+						svg {
+							height: 70%;
+							margin-right: 5px;
+
+							path {
+								stroke: $text;
+							}
+						}
 					}
 				}
 
-				&:hover,
-				&:focus {
-					background-color: $hovered-item;
+				.expires-note {
+					font-size: 0.6em;
+					color: $text-darkest;
+					margin-top: 1em;
+
+					&.expired {
+						color: $accent-light;
+					}
 				}
 
-				&:active {
-					background-color: $active-item;
+				.website-separator {
+					width: 100%;
+					height: 1px;
+					background-color: $primary-darker;
+					margin: 1.25em 0 0.25em;
 				}
 
-				&.active {
-					background-color: $selected-item;
+				.website-container {
+					font-size: 0.85em;
+					display: flex;
+					width: fit-content;
+					align-items: center;
+					height: 2em;
+					cursor: pointer;
+
+					.website,
+					path {
+						color: $primary;
+						stroke: $primary;
+						text-decoration: underline;
+						font-size: 0.8em;
+					}
+
+					.website-nav-button {
+						height: 1.25em;
+						aspect-ratio: 1;
+						margin-left: 0.5em;
+					}
+
+					&:hover,
+					&:focus:not(:active) {
+						filter: brightness(1.2);
+					}
+				}
+
+				&.website-container ~ .website-container {
+					margin-top: 1em;
+				}
+
+				.copy-button {
+					svg {
+						height: 80%;
+					}
+				}
+
+				.input-container {
+					width: 100%;
+					margin-top: 1.1em;
+				}
+
+				.notes-box {
+					height: 10em;
+
+					.icon,
+					label,
+					.placeholder {
+						top: 1.25em;
+					}
+				}
+
+				.last-updated {
+					position: absolute;
+					bottom: 10px;
+					right: 10px;
+					font-size: 0.6em;
+					color: $text-darkest;
 				}
 			}
 		}
 
-		.item-view {
-			border-left: 2px solid $primary-darker;
-			padding: 0.75em;
+		.modal-container {
+			position: fixed;
+			top: 0;
+			left: 0;
+			height: 100vh;
+			width: 100vw;
+			background-color: rgba(0, 0, 0, 0.35);
+			display: none;
+			pointer-events: none;
+			justify-content: center;
+			align-items: center;
 
-			.view-header {
-				display: flex;
-				align-items: center;
-				margin-bottom: 1em;
-
-				.title {
-					font-size: 1.25em;
-					margin-left: 0.5em;
-				}
-
-				.edit-button {
-					margin-left: auto;
-					background-color: $primary-dark;
-					font-size: 0.8em;
-					width: 6em;
-					height: 3em;
-
-					svg {
-						height: 70%;
-						margin-right: 5px;
-
-						path {
-							stroke: $text;
-						}
-					}
-				}
-			}
-
-			.expires-note {
-				font-size: 0.6em;
-				color: $text-darkest;
-				margin-top: 1em;
-
-				&.expired {
-					color: $accent-light;
-				}
-			}
-
-			.website-separator {
-				width: 100%;
-				height: 1px;
+			.modal {
 				background-color: $primary-darker;
-				margin: 1.25em 0 0.25em;
+				padding: 2.5em 3.5em;
+				border-radius: 4px;
+				box-shadow: 0 5px 10px rgba(0, 0, 0, 0.5);
+
+				.content {
+					// font-size: 1.2em;
+					// max-width: 85%;
+					text-align: center;
+					margin-bottom: 1.75em;
+				}
 			}
 
-			.website-container {
-				font-size: 0.85em;
+			&.visible {
+				display: flex !important;
+				pointer-events: all;
+			}
+		}
+
+		.add-item-modal {
+			display: flex;
+			flex-direction: column;
+			justify-content: center;
+			align-items: center;
+
+			.add-item-options {
 				display: flex;
-				width: fit-content;
+				flex-direction: column;
 				align-items: center;
-				height: 2em;
-				cursor: pointer;
 
-				.website,
-				path {
-					color: $primary;
-					stroke: $primary;
-					text-decoration: underline;
-					font-size: 0.8em;
-				}
-
-				.website-nav-button {
-					height: 1.25em;
-					aspect-ratio: 1;
-					margin-left: 0.5em;
-				}
-
-				&:hover,
-				&:focus:not(:active) {
-					filter: brightness(1.2);
-				}
-			}
-
-			&.website-container ~ .website-container {
-				margin-top: 1em;
-			}
-
-			.copy-button {
-				svg {
-					height: 80%;
-				}
-			}
-
-			.input-container {
-				width: 100%;
-				margin-top: 1.1em;
-			}
-
-			.notes-box {
-				height: 10em;
-
-				.icon,
-				label,
-				.placeholder {
-					top: 1.25em;
-				}
-			}
-
-			.last-updated {
-				position: absolute;
-				bottom: 10px;
-				right: 10px;
-				font-size: 0.6em;
-				color: $text-darkest;
-			}
-		}
-	}
-
-	.modal-container {
-		position: fixed;
-		top: 0;
-		left: 0;
-		height: 100vh;
-		width: 100vw;
-		background-color: rgba(0, 0, 0, 0.35);
-		display: none;
-		pointer-events: none;
-		justify-content: center;
-		align-items: center;
-
-		.modal {
-			background-color: $primary-darker;
-			padding: 2.5em 3.5em;
-			border-radius: 4px;
-			box-shadow: 0 5px 10px rgba(0, 0, 0, 0.5);
-
-			.content {
-				// font-size: 1.2em;
-				// max-width: 85%;
-				text-align: center;
-				margin-bottom: 1.75em;
-			}
-		}
-
-		&.visible {
-			display: flex !important;
-			pointer-events: all;
-		}
-	}
-
-	.add-item-modal {
-		display: flex;
-		flex-direction: column;
-		justify-content: center;
-		align-items: center;
-
-		.add-item-options {
-			display: flex;
-			flex-direction: column;
-			align-items: center;
-
-			button {
-				font-size: 0.7em;
-				width: 17em;
-				height: 3.25em;
-				margin-bottom: 10px;
-				position: relative;
-				background-color: $primary;
-				color: $background;
-
-				&:not(:last-child) {
+				button {
+					font-size: 0.7em;
+					width: 17em;
+					height: 3.25em;
+					margin-bottom: 10px;
+					position: relative;
 					background-color: $primary;
-				}
+					color: $background;
 
-				&:last-child {
-					color: $text;
-					background-color: $secondary;
-					margin-bottom: 0;
-				}
+					&:not(:last-child) {
+						background-color: $primary;
+					}
 
-				.icon {
-					position: absolute;
-					background-color: rgba(0, 0, 0, 0.12);
-					border-radius: 100%;
-					height: 60%;
-					aspect-ratio: 1;
-					display: flex;
-					justify-content: center;
-					align-items: center;
-					padding: 0.45em;
-					left: 1em;
+					&:last-child {
+						color: $text;
+						background-color: $secondary;
+						margin-bottom: 0;
+					}
 
-					svg {
-						height: 100%;
+					.icon {
+						position: absolute;
+						background-color: rgba(0, 0, 0, 0.12);
+						border-radius: 100%;
+						height: 60%;
+						aspect-ratio: 1;
+						display: flex;
+						justify-content: center;
+						align-items: center;
+						padding: 0.45em;
+						left: 1em;
 
-						path {
-							stroke: $text;
+						svg {
+							height: 100%;
+
+							path {
+								stroke: $text;
+							}
 						}
 					}
 				}
 			}
 		}
-	}
 
-	.filter-items-modal {
-		display: flex;
-		flex-direction: column;
-		justify-content: center;
-		align-items: center;
-
-		.filter-options {
+		.filter-items-modal {
 			display: flex;
 			flex-direction: column;
+			justify-content: center;
 			align-items: center;
 
-			button {
-				font-size: 0.7em;
-				width: 17em;
-				height: 3.25em;
-				margin-bottom: 10px;
-				position: relative;
-				background-color: $primary;
-				color: $background;
+			.filter-options {
+				display: flex;
+				flex-direction: column;
+				align-items: center;
 
-				&:last-child {
-					margin-bottom: 0;
-				}
+				button {
+					font-size: 0.7em;
+					width: 17em;
+					height: 3.25em;
+					margin-bottom: 10px;
+					position: relative;
+					background-color: $primary;
+					color: $background;
 
-				&.active {
-					background-color: $secondary;
-					color: $text;
-				}
+					&:last-child {
+						margin-bottom: 0;
+					}
 
-				.icon {
-					position: absolute;
-					background-color: rgba(0, 0, 0, 0.12);
-					border-radius: 100%;
-					height: 60%;
-					aspect-ratio: 1;
-					display: flex;
-					justify-content: center;
-					align-items: center;
-					padding: 0.45em;
-					left: 1em;
+					&.active {
+						background-color: $secondary;
+						color: $text;
+					}
 
-					svg {
-						height: 100%;
+					.icon {
+						position: absolute;
+						background-color: rgba(0, 0, 0, 0.12);
+						border-radius: 100%;
+						height: 60%;
+						aspect-ratio: 1;
+						display: flex;
+						justify-content: center;
+						align-items: center;
+						padding: 0.45em;
+						left: 1em;
 
-						path {
-							stroke: $text;
+						svg {
+							height: 100%;
+
+							path {
+								stroke: $text;
+							}
 						}
 					}
 				}
 			}
 		}
-	}
 
-	.item-options-modal {
-		display: flex;
-		flex-direction: column;
-		justify-content: center;
-		align-items: center;
-
-		.item-options {
+		.item-options-modal {
 			display: flex;
 			flex-direction: column;
+			justify-content: center;
 			align-items: center;
 
-			button {
-				font-size: 0.7em;
-				width: 17em;
-				height: 3.25em;
-				margin-bottom: 10px;
-				position: relative;
-				background-color: $primary;
-				color: $background;
+			.item-options {
+				display: flex;
+				flex-direction: column;
+				align-items: center;
 
-				&:last-child {
-					margin-bottom: 0;
-				}
+				button {
+					font-size: 0.7em;
+					width: 17em;
+					height: 3.25em;
+					margin-bottom: 10px;
+					position: relative;
+					background-color: $primary;
+					color: $background;
 
-				.icon {
-					position: absolute;
-					background-color: rgba(0, 0, 0, 0.12);
-					border-radius: 100%;
-					height: 60%;
-					aspect-ratio: 1;
-					display: flex;
-					justify-content: center;
-					align-items: center;
-					padding: 0.45em;
-					left: 1em;
+					&:last-child {
+						margin-bottom: 0;
+					}
 
-					svg {
-						height: 100%;
+					.icon {
+						position: absolute;
+						background-color: rgba(0, 0, 0, 0.12);
+						border-radius: 100%;
+						height: 60%;
+						aspect-ratio: 1;
+						display: flex;
+						justify-content: center;
+						align-items: center;
+						padding: 0.45em;
+						left: 1em;
 
-						path {
-							stroke: $text;
+						svg {
+							height: 100%;
+
+							path {
+								stroke: $text;
+							}
 						}
 					}
 				}
 			}
-		}
 
-		.add-items-to-groups-dropdown-container {
-			margin-top: 0.75em;
-			width: 80%;
-			display: flex;
-			justify-content: center;
+			.add-items-to-groups-dropdown-container {
+				margin-top: 0.75em;
+				width: 80%;
+				display: flex;
+				justify-content: center;
 
-			.add-items-to-groups-input {
-				width: 100%;
-			}
-		}
-
-		.btn-container {
-			margin-top: 3em;
-			width: 50%;
-			display: flex;
-			justify-content: center;
-
-			.confirm-btn {
-				background-color: $primary-dark;
+				.add-items-to-groups-input {
+					width: 100%;
+				}
 			}
 
-			.cancel-btn {
-				margin-left: 3em;
-				background-color: $accent;
+			.btn-container {
+				margin-top: 3em;
+				width: 50%;
+				display: flex;
+				justify-content: center;
+
+				.confirm-btn {
+					background-color: $primary-dark;
+				}
+
+				.cancel-btn {
+					margin-left: 3em;
+					background-color: $accent;
+				}
 			}
 		}
 	}
+}
+
+// This is AI slop to fix the items section not scrolling. I fucking hate CSS, so fuck you, me, it
+// and anything that tells me where, how, and why this works. It just does, so call me Todd Howard.
+// Do it. Seriously. You don't have a choice. K thx die.
+.view,
+.items-section,
+.item-select {
+	min-height: 0 !important; // override any inherited junk
+	display: flex;
+	flex-direction: column;
+}
+.items-list {
+	flex: 1 1 0;
+	min-height: 0;
+	overflow-y: auto;
 }

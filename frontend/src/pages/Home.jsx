@@ -611,36 +611,39 @@ export default function Home() {
 										""
 									)}
 								</div>
-								{state.searchResults.length ? (
-									state.searchResults.map(item => {
-										return (
-											<div
-												className={`item ${state.activeItem === item.id ? "active" : ""}`}
-												key={item.id}
-												tabIndex={0}
-												draggable
-												onClick={() => handleViewItem(item.id)}
-												onDragStart={e => handleItemDragStart(e, item.id)}>
-												<Button
-													onClick={e => {
-														e.preventDefault()
-														e.stopPropagation()
-														handleToggleSelectItem(item.id)
-													}}
-													className={`item-select-button ${state.selectedItems.includes(item.id) ? "selected" : ""}`}>
-													{state.selectedItems.includes(item.id) ? <CheckMark /> : ""}
-												</Button>
-												<ProfilePicture website={item.websites[0]} title={item.title} />
-												<div className="details">
-													<div className="title">{item.title}</div>
-													<div className="subtitle">{item.username || item.email || "(no email/username)"}</div>
+								<div className="items-list">
+									{state.searchResults.length ? (
+										state.searchResults.map(item => {
+											return (
+												<div
+													className={`item ${state.activeItem === item.id ? "active" : ""}`}
+													key={item.id}
+													tabIndex={0}
+													draggable
+													onClick={() => handleViewItem(item.id)}
+													onDragStart={e => handleItemDragStart(e, item.id)}>
+													<Button
+														onClick={e => {
+															e.preventDefault()
+															e.stopPropagation()
+															handleToggleSelectItem(item.id)
+														}}
+														className={`item-select-button ${state.selectedItems.includes(item.id) ? "selected" : ""}`}>
+														{state.selectedItems.includes(item.id) ? <CheckMark /> : ""}
+													</Button>
+													<ProfilePicture website={item.websites[0]} title={item.title} />
+													<div className="details">
+														<div className="title">{item.title}</div>
+														<div className="subtitle">{item.username || item.email || "(no email/username)"}</div>
+													</div>
 												</div>
-											</div>
-										)
-									})
-								) : (
-									<div className="no-results">No item matches your search.</div>
-								)}
+											)
+										})
+									) : (
+										<div className="no-results">No item matches your search.</div>
+									)}
+								</div>
+
 								<div ref={itemDragCount} className="item-drag-count">
 									{state.itemDragCount}
 								</div>
