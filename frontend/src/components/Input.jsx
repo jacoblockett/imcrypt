@@ -322,7 +322,7 @@ function Input(props, outerRef) {
 					onChange={onChange}
 					type={visible ? "text" : "password"}
 					value={value}
-					autoComplete="off"
+					autoComplete="one-time-code"
 					spellCheck={spellCheck ? true : false}
 					tabIndex={disabled ? -1 : 0}
 					disabled={disabled}
@@ -338,7 +338,7 @@ function Input(props, outerRef) {
 					onChange={onChange}
 					type={type === "date" ? "date" : visible ? "text" : "password"}
 					value={value}
-					autoComplete="off"
+					autoComplete="one-time-code"
 					required={required}
 					spellCheck={spellCheck ? true : false}
 					tabIndex={disabled ? -1 : 0}
