@@ -1,4 +1,7 @@
-# Imcrypt
+<div align="center">
+<img src="build/appicon.png" alt="App Icon" width="100">
+<p><h1>Imcrypt</h1></p>
+</div>
 
 Ever wanted a password manager that uses encrypted photosteganography? I didn't think so, but I made it anyway. Specifically, I wanted a bunch of features that many other managers just didn't seem interested in supporting, namely custom generation rule logic, and this was the storage medium I decided to get gimicky with. There're still a ton of features and updates to be made, but it's at a point now that I can actually make use of it, offering the basics in password management. I don't have a whole lot of time to spend on this project at the moment so development might be slow, but I'll try to keep up with critical issues and PR's should they arise.
 
