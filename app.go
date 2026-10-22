@@ -222,7 +222,9 @@ func (a *App) GenerateTwoFactorSecret() []any {
 	}
 
 	sec := key.Secret()
-	storage.TwoFactorSecret = []byte(sec)
+	if err := storage.SetTwoFactorSecret(sec); err != nil {
+		return []any{err.Error()}
+	}
 
 	recoveryCode, _ := gonanoid.Generate("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789", 50)
 
@@ -301,13 +303,26 @@ func (a *App) ValidateTwoFactorCode(code string, shouldConfirm bool) []any {
 	if !confirmed && !unlocked {
 		return []any{"vault is locked"}
 	}
-	if len(store.TwoFactorSecret) == 0 {
-		return []any{"two-factor secret is missing"}
+
+	secret, err := store.GetTwoFactorSecret()
+	if err != nil {
+		return []any{err.Error()}
 	}
-	if !totp.Validate(code, string(store.TwoFactorSecret)) {
+	if !totp.Validate(code, secret) {
 		return []any{nil, false}
 	}
+
 	if confirmed {
+		// Older vaults stored the TOTP seed unencrypted. Migrate only after
+		// successful validation so incorrect attempts never rewrite the image.
+		if store.HasLegacyTwoFactorSecret() {
+			if err := store.SetTwoFactorSecret(secret); err != nil {
+				return []any{err.Error()}
+			}
+			if err := a.fd.WriteImcryptStorage(store); err != nil {
+				return []any{err.Error()}
+			}
+		}
 		a.setAuth(true, true)
 	} else if shouldConfirm {
 		store.TwoFactorConfirmed = []byte{1}
