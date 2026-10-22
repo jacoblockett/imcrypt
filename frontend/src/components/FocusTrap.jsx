@@ -171,4 +171,9 @@ useFocusTrap.focusPrevious = function (referenceTarget) {
 	focusPrevious(currentTarget)
 }
 
+useFocusTrap.clear = function () {
+	document.removeEventListener("keydown", handleTrappedFocus)
+	state.setState({ trigger: undefined, node: undefined, exclude: [], history: [] })
+}
+
 export default useFocusTrap

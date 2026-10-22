@@ -62,6 +62,10 @@ export function IsAuthenticated() {
   return window['go']['main']['App']['IsAuthenticated']();
 }
 
+export function LockSession() {
+  return window['go']['main']['App']['LockSession']();
+}
+
 export function LoadImage(arg1) {
   return window['go']['main']['App']['LoadImage'](arg1);
 }
@@ -72,6 +76,14 @@ export function OpenFileDialog(arg1, arg2) {
 
 export function OpenURLInBrowser(arg1) {
   return window['go']['main']['App']['OpenURLInBrowser'](arg1);
+}
+
+export function ResumeSession() {
+  return window['go']['main']['App']['ResumeSession']();
+}
+
+export function SuspendSession(arg1) {
+  return window['go']['main']['App']['SuspendSession'](arg1);
 }
 
 export function ReadLoadedImage() {

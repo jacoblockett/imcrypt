@@ -30,7 +30,23 @@ func (a *App) invalidateAuth() {
 		a.aet.Stop()
 		a.aet = nil
 	}
+	if a.snapshotGrace != nil {
+		a.snapshotGrace.Stop()
+		a.snapshotGrace = nil
+	}
+	a.snapshotPending = false
 	_ = key.Delete()
+}
+
+// A code validated before expiry must not reauthorize an expired session.
+func (a *App) completeSecondFactor() bool {
+	a.authMu.Lock()
+	defer a.authMu.Unlock()
+	if !a.passwordVerified || a.snapshotPending {
+		return false
+	}
+	a.vaultUnlocked = true
+	return true
 }
 
 func (a *App) requireUnlocked() error {

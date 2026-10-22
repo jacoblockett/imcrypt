@@ -1,7 +1,7 @@
 import DragAndDrop from "../components/DragAndDrop"
 import { LoadImage, HasStorage, ReadLoadedImage } from "../../wailsjs/go/main/App"
 import { usePath } from "crossroad"
-import { useLoadedImageState } from "../store"
+import { useLoadedImageState, clearWorkingState } from "../store"
 
 export default function Open() {
 	const [, setPath] = usePath()
@@ -18,6 +18,7 @@ export default function Open() {
 			throw new Error("Expected paths to be an Array with 1 string.")
 		}
 
+		clearWorkingState()
 		const [loadErr] = await LoadImage(paths[0])
 		if (loadErr) throw loadErr
 

@@ -9,7 +9,8 @@ import {
 	UnlockLoadedImage
 } from "../../../wailsjs/go/main/App"
 import { usePath } from "crossroad"
-import { useDatabaseState, useLoadedImageState, useLoginPanelState, useRulesetPanelState } from "../../store"
+import { useDatabaseState, useLoadedImageState, useLoginPanelState, useRulesetPanelState, clearWorkingState } from "../../store"
+import { restoreWorkingState } from "../../session"
 import useFocusTrap from "../../components/FocusTrap"
 import { useToast } from "../../components/Toast"
 
@@ -52,7 +53,8 @@ export default function DecryptText() {
 		} else {
 			const [loadErr] = await useDatabaseState.getState().load()
 			if (loadErr) throw loadErr
-
+			await restoreWorkingState()
+			setValue("")
 			setPath("/home", { mode: "replace" })
 		}
 	}
@@ -68,10 +70,8 @@ export default function DecryptText() {
 
 	async function handleRelease() {
 		await CloseSession()
-		useLoadedImageState.setState({ binary: null })
-		useLoginPanelState.setState({ isOpen: false })
-		useRulesetPanelState.setState({ isOpen: false })
 		setPath("/", { mode: "replace" })
+		clearWorkingState()
 	}
 
 	useEffect(() => {

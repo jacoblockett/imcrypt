@@ -2,9 +2,8 @@ import { useRef, forwardRef, useImperativeHandle, useState } from "react"
 import Input from "./Input"
 import GroupMenu from "./GroupMenu"
 import { useToast } from "./Toast"
-import { useDatabaseState, useGroupPanelState } from "../store"
+import { useDatabaseState, useGroupPanelState, useHomeState } from "../store"
 import { useShallow } from "zustand/react/shallow"
-import { useHomeState } from "../pages/Home"
 
 function Group({ id, name, count, noedit, menu }, outerRef) {
 	const { getGroupsAsArray, insertGroups, updateGroupsById } = useDatabaseState(
