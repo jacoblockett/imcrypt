@@ -32,8 +32,6 @@ export function InsertItems(arg1:Array<database.InsertItemsArg>):Promise<Array<a
 
 export function IsAuthenticated():Promise<Array<any>>;
 
-export function LockSession():Promise<Array<any>>;
-
 export function LoadImage(arg1:string):Promise<Array<any>>;
 
 export function OpenFileDialog(arg1:string,arg2:string):Promise<Array<any>>;

@@ -42,19 +42,6 @@ func (a *App) lockSession(generation uint64) {
 	runtime.EventsEmit(a.ctx, "e_authlock")
 }
 
-// LockSession exposes the same reversible lock without waiting for expiry.
-func (a *App) LockSession() []any {
-	a.authMu.Lock()
-	generation := a.authGeneration
-	unlocked := a.vaultUnlocked
-	a.authMu.Unlock()
-	if !unlocked {
-		return []any{"vault is locked"}
-	}
-	a.lockSession(generation)
-	return []any{nil}
-}
-
 func (a *App) discardSnapshot() {
 	a.authMu.Lock()
 	defer a.authMu.Unlock()

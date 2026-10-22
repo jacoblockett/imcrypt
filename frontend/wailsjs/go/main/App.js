@@ -62,10 +62,6 @@ export function IsAuthenticated() {
   return window['go']['main']['App']['IsAuthenticated']();
 }
 
-export function LockSession() {
-  return window['go']['main']['App']['LockSession']();
-}
-
 export function LoadImage(arg1) {
   return window['go']['main']['App']['LoadImage'](arg1);
 }

@@ -30,7 +30,7 @@ import ClipboardCheck from "../components/svg/ClipboardCheck"
 import Navigate from "../components/svg/Navigate"
 import Key from "../components/svg/Key"
 import { format, formatInTimeZone } from "date-fns-tz"
-import { OpenURLInBrowser, CloseSession, LockSession, DeleteTwoFactorSecret } from "../../wailsjs/go/main/App"
+import { OpenURLInBrowser, CloseSession, DeleteTwoFactorSecret } from "../../wailsjs/go/main/App"
 import ProfilePicture from "../components/ProfilePicture"
 import Fuse from "fuse.js"
 import Dropdown from "../components/Dropdown"
@@ -552,9 +552,6 @@ export default function Home() {
 					</div> */}
 					<div tabIndex={0} onClick={handleTFASetup}>
 						<Key /> <span>Turn {hasTwoFactorAuthentication ? "off" : "on"} TFA</span>
-					</div>
-					<div tabIndex={0} onClick={() => LockSession()}>
-						<Lock /> <span>Lock Screen</span>
 					</div>
 					<div tabIndex={0} onClick={handleCloseSession}>
 						<Lock /> <span>Close File and Logout</span>
