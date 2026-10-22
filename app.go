@@ -20,6 +20,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -33,8 +34,13 @@ import (
 
 type App struct {
 	ctx context.Context
-	fd  *file.File
-	aet *time.Timer // auth expiration timer
+	fd *file.File
+	aet *time.Timer
+
+	authMu sync.Mutex
+	passwordVerified bool
+	vaultUnlocked bool
+	authGeneration uint64
 }
 
 // NewApp creates a new App application struct
@@ -64,25 +70,20 @@ func (a *App) startup(ctx context.Context) {
 
 func (a *App) shutdown() {
 	fmt.Println("App has been shut down")
-	key.Delete()
-
+	a.invalidateAuth()
 	if a.fd != nil {
 		a.fd.Close()
+		a.fd = nil
 	}
 }
 
 // API: Closes the current login session and releases the file
 func (a *App) CloseSession() []any {
+	a.invalidateAuth()
 	if a.fd != nil {
 		a.fd.Close()
 		a.fd = nil
 	}
-
-	if a.aet != nil {
-		a.aet.Stop()
-		a.aet = nil
-	}
-
 	return []any{}
 }
 
@@ -105,23 +106,26 @@ func (a *App) OpenFileDialog(title string, pattern string) []any {
 // API: Loads an image from the given file path. The image will be used as
 // the storage path
 func (a *App) LoadImage(path string) []any {
-	file, err := fs.OpenFile(path)
+	// Changing the loaded image invalidates every prior authentication factor.
+	a.invalidateAuth()
+	if a.fd != nil {
+		a.fd.Close()
+		a.fd = nil
+	}
+	f, err := fs.OpenFile(path)
 	if err != nil {
 		return []any{err.Error()}
 	}
-
-	isValid, err := file.IsPNGOrJPG()
+	valid, err := f.IsPNGOrJPG()
 	if err != nil {
-		file.Close()
+		f.Close()
 		return []any{err.Error()}
 	}
-	if !isValid {
-		file.Close()
+	if !valid {
+		f.Close()
 		return []any{"file is not a png or jpg image"}
 	}
-
-	a.fd = file
-
+	a.fd = f
 	return []any{}
 }
 
@@ -143,6 +147,7 @@ func (a *App) HasStorage() []any {
 
 // API: Initializes a new Storage struct onto the loaded image
 func (a *App) InitializeStorage(password string) []any {
+	a.invalidateAuth()
 	if len(password) < 1 {
 		return []any{"password must be at least 1 character long"}
 	}
@@ -195,6 +200,7 @@ func (a *App) InitializeStorage(password string) []any {
 		return []any{err.Error()}
 	}
 
+	a.setAuth(true, true)
 	a.createAuthTimeout(defaultSettings.SessionLength)
 
 	return []any{}
@@ -277,48 +283,63 @@ func (a *App) DeleteTwoFactorSecret() []any {
 
 // API: Checks if TFA is setup on storage
 func (a *App) HasTwoFactorAuthentication() []any {
-	storage, _, err := a.pull()
+	store, err := a.readPasswordVerifiedStorage()
 	if err != nil {
 		return []any{err.Error()}
 	}
-
-	return []any{nil, bytes.Equal(storage.TwoFactorConfirmed, []byte{1})}
+	return []any{nil, bytes.Equal(store.TwoFactorConfirmed, []byte{1})}
 }
 
 // API: Validates the incoming code against the stored TFA secret from storage
 func (a *App) ValidateTwoFactorCode(code string, shouldConfirm bool) []any {
-	storage, _, err := a.pull()
+	store, err := a.readPasswordVerifiedStorage()
 	if err != nil {
 		return []any{err.Error()}
 	}
-
-	good := totp.Validate(code, string(storage.TwoFactorSecret))
-
-	if shouldConfirm && good {
-		storage.TwoFactorConfirmed = []byte{1}
-
-		err = a.fd.WriteImcryptStorage(storage)
-		if err != nil {
+	_, unlocked := a.authState()
+	confirmed := bytes.Equal(store.TwoFactorConfirmed, []byte{1})
+	if !confirmed && !unlocked {
+		return []any{"vault is locked"}
+	}
+	if len(store.TwoFactorSecret) == 0 {
+		return []any{"two-factor secret is missing"}
+	}
+	if !totp.Validate(code, string(store.TwoFactorSecret)) {
+		return []any{nil, false}
+	}
+	if confirmed {
+		a.setAuth(true, true)
+	} else if shouldConfirm {
+		store.TwoFactorConfirmed = []byte{1}
+		if err := a.fd.WriteImcryptStorage(store); err != nil {
 			return []any{err.Error()}
 		}
 	}
-
-	return []any{nil, good}
+	return []any{nil, true}
 }
 
 // API: Validates the incoming recovery code against the stored recovery code hash/salt
 func (a *App) ValidateTwoFactorRecoveryCode(code string) []any {
-	storage, _, err := a.pull()
+	store, err := a.readPasswordVerifiedStorage()
 	if err != nil {
 		return []any{err.Error()}
 	}
-
-	hashedInput, err := crypto.Hash([]byte(code), storage.TwoFactorRecoverySalt)
+	if !bytes.Equal(store.TwoFactorConfirmed, []byte{1}) {
+		return []any{"two-factor authentication is not enabled"}
+	}
+	if len(store.TwoFactorRecoveryHash) == 0 {
+		return []any{nil, false}
+	}
+	hashed, err := crypto.Hash([]byte(code), store.TwoFactorRecoverySalt)
 	if err != nil {
 		return []any{err.Error()}
 	}
-
-	return []any{nil, bytes.Equal(hashedInput, storage.TwoFactorRecoveryHash)}
+	valid := crypto.ValidateHMAC(hashed, store.TwoFactorRecoveryHash)
+	if valid {
+		// Recovery code serves as the alternative second factor.
+		a.setAuth(true, true)
+	}
+	return []any{nil, valid}
 }
 
 // API: Reads into a []byte the contents of the loaded image
@@ -334,42 +355,41 @@ func (a *App) ReadLoadedImage() []any {
 
 // API: Unlocks the loaded image, returning the loaded database
 func (a *App) UnlockLoadedImage(password string) []any {
-	storage, err := a.fd.ReadImcryptStorage()
+	a.invalidateAuth()
+	if a.fd == nil {
+		return []any{"no image is loaded"}
+	}
+	store, err := a.fd.ReadImcryptStorage()
 	if err != nil {
 		return []any{err.Error()}
 	}
-
-	passwordHash, err := crypto.Hash([]byte(password), storage.PasswordSalt)
+	passwordHash, err := crypto.Hash([]byte(password), store.PasswordSalt)
 	if err != nil {
 		return []any{err.Error()}
 	}
-
-	err = key.Set(storage.Id, passwordHash)
-	if err != nil {
+	if err := key.Set(store.Id, passwordHash); err != nil {
 		return []any{err.Error()}
 	}
-
-	database, err := storage.GetDatabase()
+	db, err := store.GetDatabase()
 	if err != nil {
+		a.invalidateAuth()
 		return []any{err.Error()}
 	}
-
-	a.createAuthTimeout(database.Settings.SessionLength)
-
-	// Checks if a previous session recorded TFA data but it was never confirmed by the user (i.e. didn't
-	// pass the test code). This would mostly happen if the user's session timed out before they finished setup.
-	if !bytes.Equal(storage.TwoFactorConfirmed, []byte{1}) && storage.TwoFactorRecoveryHash != nil {
-		storage.TwoFactorRecoveryHash = nil
-		storage.TwoFactorRecoverySalt = nil
-		storage.TwoFactorSecret = nil
-
-		err = a.fd.WriteImcryptStorage(storage)
-		if err != nil {
+	confirmed := bytes.Equal(store.TwoFactorConfirmed, []byte{1})
+	a.setAuth(true, !confirmed)
+	a.createAuthTimeout(db.Settings.SessionLength)
+	// Preserve cleanup of an unfinished second-factor enrollment.
+	if !confirmed && store.TwoFactorRecoveryHash != nil {
+		store.TwoFactorRecoveryHash = nil
+		store.TwoFactorRecoverySalt = nil
+		store.TwoFactorSecret = nil
+		if err := a.fd.WriteImcryptStorage(store); err != nil {
+			a.invalidateAuth()
 			return []any{err.Error()}
 		}
 	}
-
-	return []any{nil, database}
+	// A valid master password alone never returns decrypted secrets.
+	return []any{nil}
 }
 
 // API: Retrieves the database
@@ -385,25 +405,13 @@ func (a *App) GetDatabase() []any {
 // API: Checks if the loaded storage's id and the key's id match, validating they are
 // meant to be used together
 func (a *App) IsAuthenticated() []any {
-	if a.fd == nil {
+	if err := a.requireUnlocked(); err != nil {
 		return []any{nil, false}
 	}
-
-	storage, err := a.fd.ReadImcryptStorage()
-	if err != nil {
-		return []any{err.Error(), false}
+	if _, err := a.readPasswordVerifiedStorage(); err != nil {
+		return []any{nil, false}
 	}
-
-	keyData, err := key.Get()
-	if err != nil {
-		if err == key.ErrKeyNotFound || err == key.ErrKeyExpired {
-			return []any{nil, false}
-		}
-
-		return []any{err.Error(), false}
-	}
-
-	return []any{nil, bytes.Equal(storage.Id, keyData.Id)}
+	return []any{nil, true}
 }
 
 // API: Inserts new Items into the Database, returning the newly inserted Items' ids and
@@ -738,28 +746,48 @@ func (a *App) GetFaviconURL(pageURL string) []any {
 
 // Helper: Gets the file descriptor, storage, and database off of the temp file
 func (a *App) pull() (*storage.Storage, *database.Database, error) {
-	storage, err := a.fd.ReadImcryptStorage()
+	if err := a.requireUnlocked(); err != nil {
+		return nil, nil, err
+	}
+	if a.fd == nil {
+		return nil, nil, fmt.Errorf("no image is loaded")
+	}
+	store, err := a.fd.ReadImcryptStorage()
 	if err != nil {
 		return nil, nil, err
 	}
-
-	database, err := storage.GetDatabase()
+	db, err := store.GetDatabase()
 	if err != nil {
 		return nil, nil, err
 	}
-
-	return storage, database, nil
+	if err := a.requireUnlocked(); err != nil {
+		return nil, nil, err
+	}
+	return store, db, nil
 }
 
 // Helper: Creates an authentication timeout
 func (a *App) createAuthTimeout(timeInMilliseconds int) {
+	a.authMu.Lock()
+	a.authGeneration++
+	generation := a.authGeneration
 	if a.aet != nil {
 		a.aet.Stop()
 	}
-
 	dur := time.Duration(timeInMilliseconds) * time.Millisecond
 	a.aet = time.AfterFunc(dur, func() {
-		key.Delete()
+		a.authMu.Lock()
+		if a.authGeneration != generation {
+			a.authMu.Unlock()
+			return
+		}
+		a.authGeneration++
+		a.passwordVerified = false
+		a.vaultUnlocked = false
+		a.aet = nil
+		_ = key.Delete()
+		a.authMu.Unlock()
 		runtime.EventsEmit(a.ctx, "e_authexp")
 	})
+	a.authMu.Unlock()
 }
