@@ -837,10 +837,10 @@ export const useRulesetPanelState = create((set, get) => ({
 // Ideally this won't be needed because there will be a subscription to the key expiry that automatically
 // navs to auth screen without user interaction
 
-export function clearWorkingState() {
+export function clearWorkingState(preserveImage = false) {
 	invalidateSessionRequests()
 	useDatabaseState.setState({ items: {}, groups: {}, settings: {}, loaded: false, hasTwoFactorAuthentication: false })
-	useLoadedImageState.setState({ binary: "" })
+	if (!preserveImage) useLoadedImageState.setState({ binary: "" })
 	useFaviconCache.setState({ cache: new Map() })
 	for (const store of [useHomeState, useGroupPanelState, useLoginPanelState, useRulesetPanelState]) {
 		const defaults = store.getInitialState()

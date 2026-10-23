@@ -77,7 +77,8 @@ export function captureWorkingState() {
 }
 
 export function clearSuspendedState() {
-	clearWorkingState()
+	// Keep the already loaded cover image visible on the password screen.
+	clearWorkingState(true)
 	useFocusTrap.clear()
 }
 
