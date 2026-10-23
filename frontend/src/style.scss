@@ -2460,3 +2460,11 @@ input[type="date"] + .action-button-wrapper svg {
 	min-height: 0;
 	overflow-y: auto;
 }
+
+// Conceal the old view while the session snapshot is encrypted.
+.session-lock-cover {
+	position: fixed;
+	inset: 0;
+	z-index: 2147483647;
+	background: $background;
+}

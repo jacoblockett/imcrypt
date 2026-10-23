@@ -41,6 +41,11 @@ type App struct {
 	passwordVerified bool
 	vaultUnlocked bool
 	authGeneration uint64
+
+	snapshot        []byte
+	snapshotID      []byte
+	snapshotPending bool
+	snapshotGrace   *time.Timer
 }
 
 // NewApp creates a new App application struct
@@ -71,6 +76,7 @@ func (a *App) startup(ctx context.Context) {
 func (a *App) shutdown() {
 	fmt.Println("App has been shut down")
 	a.invalidateAuth()
+	a.discardSnapshot()
 	if a.fd != nil {
 		a.fd.Close()
 		a.fd = nil
@@ -80,6 +86,7 @@ func (a *App) shutdown() {
 // API: Closes the current login session and releases the file
 func (a *App) CloseSession() []any {
 	a.invalidateAuth()
+	a.discardSnapshot()
 	if a.fd != nil {
 		a.fd.Close()
 		a.fd = nil
@@ -323,7 +330,9 @@ func (a *App) ValidateTwoFactorCode(code string, shouldConfirm bool) []any {
 				return []any{err.Error()}
 			}
 		}
-		a.setAuth(true, true)
+		if !a.completeSecondFactor() {
+			return []any{"session expired"}
+		}
 	} else if shouldConfirm {
 		store.TwoFactorConfirmed = []byte{1}
 		if err := a.fd.WriteImcryptStorage(store); err != nil {
@@ -352,7 +361,9 @@ func (a *App) ValidateTwoFactorRecoveryCode(code string) []any {
 	valid := crypto.ValidateHMAC(hashed, store.TwoFactorRecoveryHash)
 	if valid {
 		// Recovery code serves as the alternative second factor.
-		a.setAuth(true, true)
+		if !a.completeSecondFactor() {
+			return []any{"session expired"}
+		}
 	}
 	return []any{nil, valid}
 }
@@ -790,19 +801,6 @@ func (a *App) createAuthTimeout(timeInMilliseconds int) {
 		a.aet.Stop()
 	}
 	dur := time.Duration(timeInMilliseconds) * time.Millisecond
-	a.aet = time.AfterFunc(dur, func() {
-		a.authMu.Lock()
-		if a.authGeneration != generation {
-			a.authMu.Unlock()
-			return
-		}
-		a.authGeneration++
-		a.passwordVerified = false
-		a.vaultUnlocked = false
-		a.aet = nil
-		_ = key.Delete()
-		a.authMu.Unlock()
-		runtime.EventsEmit(a.ctx, "e_authexp")
-	})
+	a.aet = time.AfterFunc(dur, func() { a.lockSession(generation) })
 	a.authMu.Unlock()
 }

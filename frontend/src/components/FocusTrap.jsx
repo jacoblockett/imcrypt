@@ -171,4 +171,10 @@ useFocusTrap.focusPrevious = function (referenceTarget) {
 	focusPrevious(currentTarget)
 }
 
+// Remove references to the old DOM when the vault is suspended.
+useFocusTrap.clear = function () {
+	document.removeEventListener("keydown", handleTrappedFocus)
+	state.setState({ trigger: undefined, node: undefined, exclude: [], history: [] })
+}
+
 export default useFocusTrap

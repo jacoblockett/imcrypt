@@ -1,5 +1,5 @@
 import { act, useEffect, useLayoutEffect, useRef } from "react"
-import { useDatabaseState, useGroupPanelState, useLoginPanelState, useRulesetPanelState } from "../store"
+import { useDatabaseState, useGroupPanelState, useLoginPanelState, useRulesetPanelState, useHomeState, clearWorkingState } from "../store"
 import { useShallow } from "zustand/react/shallow"
 import Button from "../components/Button"
 import Input from "../components/Input"
@@ -20,7 +20,6 @@ import LoginPanel from "../components/LoginPanel"
 import RulesPanel from "../components/RulesPanel"
 import useFocusTrap from "../components/FocusTrap"
 import { attempt } from "../utils"
-import { create } from "zustand"
 import { useConfirm } from "../components/Confirm"
 import { useToast } from "../components/Toast"
 import Pencil from "../components/svg/Pencil"
@@ -37,21 +36,8 @@ import Fuse from "fuse.js"
 import Dropdown from "../components/Dropdown"
 import { fromUnixTime } from "date-fns"
 import { usePath } from "crossroad"
-
-export const useHomeState = create(() => ({
-	searchInput: "",
-	searchResults: [], // items
-	selectedItems: [], // item ids
-	activeItem: "", // item id
-	copySuccess: false,
-	addItemModal: false,
-	filterItemsModal: false,
-	activeFilter: "AZ", // AZ, ZA, CA, CD, UA, UD
-	itemOptionsModal: false,
-	addItemsToGroupModal: false,
-	addItemsToGroupModalInput: [],
-	itemDragCount: 0
-}))
+import { flushSync } from "react-dom"
+import { finishSessionRestore } from "../session"
 
 export default function Home() {
 	const {
@@ -447,8 +433,8 @@ export default function Home() {
 
 	async function handleCloseSession() {
 		await CloseSession()
-
-		setPath("/", { mode: "replace" })
+		flushSync(() => setPath("/", { mode: "replace" }))
+		clearWorkingState()
 	}
 
 	useEffect(() => {
@@ -482,6 +468,10 @@ export default function Home() {
 			useHomeState.setState({ searchResults: list })
 		}
 	}, [loaded, state.searchInput, selectedGroup, state.activeFilter, dbItems])
+
+	useLayoutEffect(() => {
+		finishSessionRestore()
+	}, [loaded])
 
 	useLayoutEffect(() => {
 		if (useLoginPanelState.getState().isOpen) {
