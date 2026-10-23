@@ -52,10 +52,10 @@ func Hash(payload []byte, salt []byte) ([]byte, error) {
 
 // Legacy PBKDF2 vaults use KDFLegacy. New vaults use Argon2id.
 const (
-	KDFLegacy = 0
-	KDFArgon2id = 1
-	argonMemory = 64 * 1024 // KiB
-	argonIterations = 3
+	KDFLegacy        = 0
+	KDFArgon2id      = 1
+	argonMemory      = 64 * 1024 // KiB
+	argonIterations  = 3
 	argonParallelism = 4
 )
 
@@ -63,10 +63,14 @@ const (
 func PasswordKey(password, salt []byte, version int) ([]byte, error) {
 	switch version {
 	case KDFLegacy:
-		if len(salt) != 8 { return nil, fmt.Errorf("invalid legacy password salt") }
+		if len(salt) != 8 {
+			return nil, fmt.Errorf("invalid legacy password salt")
+		}
 		return Hash(password, salt)
 	case KDFArgon2id:
-		if len(salt) != 16 { return nil, fmt.Errorf("invalid Argon2id password salt") }
+		if len(salt) != 16 {
+			return nil, fmt.Errorf("invalid Argon2id password salt")
+		}
 		return argon2.IDKey(password, salt, argonIterations, argonMemory, argonParallelism, 32), nil
 	default:
 		return nil, fmt.Errorf("unsupported vault KDF version: %d", version)
