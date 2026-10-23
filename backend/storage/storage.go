@@ -10,6 +10,7 @@ import (
 )
 
 type Storage struct {
+	KDFVersion            int
 	Id                    []byte
 	EncryptionSalt        []byte
 	PasswordSalt          []byte
@@ -23,7 +24,30 @@ type Storage struct {
 
 const signature = "imcrypt_v3"
 
+// Legacy vaults have no KDFVersion field in their gob representation.
+// Only new vaults authenticate these fields as AES-GCM associated data.
+func (s *Storage) associatedData() ([]byte, error) {
+	switch s.KDFVersion {
+	case crypto.KDFLegacy:
+		return nil, nil
+	case crypto.KDFArgon2id:
+		if len(s.PasswordSalt) != 16 || len(s.EncryptionSalt) != 16 || len(s.Id) == 0 {
+			return nil, fmt.Errorf("invalid Argon2id vault metadata")
+		}
+		data := make([]byte, 0, 24+len(s.Id)+len(s.PasswordSalt)+len(s.EncryptionSalt))
+		data = append(data, []byte("imcrypt:vault:argon2id:v1:")...)
+		data = append(data, s.Id...)
+		data = append(data, s.PasswordSalt...)
+		data = append(data, s.EncryptionSalt...)
+		return data, nil
+	default:
+		return nil, fmt.Errorf("unsupported vault KDF version: %d", s.KDFVersion)
+	}
+}
+
 func (s *Storage) SetDatabase(database *database.Database) error {
+	aad, err := s.associatedData()
+	if err != nil { return err }
 	keyData, err := key.Get()
 	if err != nil {
 		return err
@@ -46,7 +70,7 @@ func (s *Storage) SetDatabase(database *database.Database) error {
 
 	signed := utils.Sign(gobbed, []byte(signature))
 
-	encrypted, err := crypto.Encrypt(signed, encryptionKey)
+	encrypted, err := crypto.EncryptWithAAD(signed, encryptionKey, aad)
 	if err != nil {
 		return err
 	}
@@ -58,6 +82,8 @@ func (s *Storage) SetDatabase(database *database.Database) error {
 }
 
 func (s *Storage) GetDatabase() (*database.Database, error) {
+	aad, err := s.associatedData()
+	if err != nil { return nil, err }
 	keyData, err := key.Get()
 	if err != nil {
 		return nil, err
@@ -73,7 +99,7 @@ func (s *Storage) GetDatabase() (*database.Database, error) {
 		return nil, err
 	}
 
-	decrypted, err := crypto.Decrypt(s.EncryptedDatabase, encryptionKey)
+	decrypted, err := crypto.DecryptWithAAD(s.EncryptedDatabase, encryptionKey, aad)
 	if err != nil {
 		return nil, fmt.Errorf("unable to decrypt database with given password hash: %v", err)
 	}
