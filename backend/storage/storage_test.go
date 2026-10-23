@@ -6,6 +6,7 @@ import (
 	"imcrypt_v3/backend/crypto"
 	"imcrypt_v3/backend/database"
 	"imcrypt_v3/backend/key"
+	"imcrypt_v3/backend/utils"
 
 	"github.com/zalando/go-keyring"
 )
@@ -48,4 +49,27 @@ func TestLegacyVaultDatabaseStillDecrypts(t *testing.T) {
 	db := database.NewDatabase()
 	if err := s.SetDatabase(&db); err != nil { t.Fatal(err) }
 	if _, err := s.GetDatabase(); err != nil { t.Fatalf("legacy database unreadable: %v", err) }
+}
+
+func TestGobWithoutKDFVersionLoadsAsLegacy(t *testing.T) {
+	// An image created before this patch has no KDFVersion gob field.
+	type oldStorage struct {
+		Id []byte
+		EncryptionSalt []byte
+		PasswordSalt []byte
+		EncryptedDatabase []byte
+		HMAC []byte
+		TwoFactorSecret []byte
+		TwoFactorRecoveryHash []byte
+		TwoFactorRecoverySalt []byte
+		TwoFactorConfirmed []byte
+	}
+	old := oldStorage{Id: []byte("old-vault"), PasswordSalt: []byte("12345678")}
+	raw, err := utils.Gobify(old)
+	if err != nil { t.Fatal(err) }
+	var loaded Storage
+	if err := utils.Degob(raw, &loaded); err != nil { t.Fatal(err) }
+	if loaded.KDFVersion != crypto.KDFLegacy || string(loaded.Id) != "old-vault" {
+		t.Fatalf("existing gob storage misidentified: %#v", loaded)
+	}
 }
