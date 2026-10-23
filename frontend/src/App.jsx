@@ -21,9 +21,20 @@ export default function App({ children }) {
 				mouseDownTarget.current = undefined
 			}
 		}
+		// Prevent file-drop navigation if native WebView2 suppression fails.
+		// Non-file HTML5 drag events retain their default behavior.
+		function preventFileDropNavigation(e) {
+			if (e.dataTransfer?.types?.includes("Files")) {
+				e.preventDefault()
+			}
+		}
+		window.addEventListener("dragover", preventFileDropNavigation, true)
+		window.addEventListener("drop", preventFileDropNavigation, true)
 		document.addEventListener("mousedown", handleMouseDown)
 		document.addEventListener("mouseup", handleMouseUp)
 		return () => {
+			window.removeEventListener("dragover", preventFileDropNavigation, true)
+			window.removeEventListener("drop", preventFileDropNavigation, true)
 			document.removeEventListener("mousedown", handleMouseDown)
 			document.removeEventListener("mouseup", handleMouseUp)
 		}

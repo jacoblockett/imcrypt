@@ -1,4 +1,4 @@
-import DragAndDrop from "../components/DragAndDrop"
+import FilePicker from "../components/FilePicker"
 import { LoadImage, HasStorage, ReadLoadedImage } from "../../wailsjs/go/main/App"
 import { usePath } from "crossroad"
 import { useLoadedImageState } from "../store"
@@ -43,7 +43,7 @@ export default function Open() {
 
 	return (
 		<div id="open" className="page">
-			<DragAndDrop type="image" text="Drag and drop an image or recovery journal to open." onData={handleData} />
+			<FilePicker type="image" text="Select an image or recovery journal to open." onData={handleData} />
 		</div>
 	)
 }

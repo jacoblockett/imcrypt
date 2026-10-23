@@ -33,9 +33,18 @@ func main() {
 		Bind: []interface{}{
 			app,
 		},
+		// File dropping is deferred until migration to Wails v3.
+		// Wails v2's WebView drop-disabling API breaks file callbacks:
+		// https://github.com/wailsapp/wails/issues/3563
+		// https://github.com/wailsapp/wails/issues/3782
+		// Previous configuration:
+		// DragAndDrop: &options.DragAndDrop{
+		//     EnableFileDrop:     true,
+		//     DisableWebViewDrop: false,
+		// },
 		DragAndDrop: &options.DragAndDrop{
-			EnableFileDrop:     true,
-			DisableWebViewDrop: false,
+			EnableFileDrop:     false,
+			DisableWebViewDrop: true,
 		},
 		LogLevel: logger.ERROR,
 	})

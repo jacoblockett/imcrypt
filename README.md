@@ -19,6 +19,7 @@ Ever wanted a password manager that uses encrypted photosteganography? I didn't 
 
 ## Planned Features (as time permits)
 
+- Restore file-opening drag-and-drop after migrating to Wails v3 (retired in v2 due to [Wails #3563](https://github.com/wailsapp/wails/issues/3563) and [#3782](https://github.com/wailsapp/wails/issues/3782); use the file picker until then).
 - Group/vault reordering (drag-n-drop), sorting, filtering (persistence preferable)
 - Importing/exporting, both native and external clients. Planned formats include CSV, JSON, XML
 - A separate password generation page/panel so you don't have to "create" a password just to use generation logic

@@ -524,13 +524,13 @@ input[type="date"] + .action-button-wrapper svg {
 	overflow: hidden;
 }
 
-.drag-and-drop {
+.file-picker {
 	border-radius: 4px;
 	display: flex;
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
-	border: 4px dashed $text;
+	border: 1px solid $text;
 	padding: 2em;
 
 	.icon {
@@ -684,7 +684,7 @@ input[type="date"] + .action-button-wrapper svg {
 #open {
 	position: relative;
 
-	.drag-and-drop {
+	.file-picker {
 		max-width: 50%;
 		position: absolute;
 		left: 50%;
