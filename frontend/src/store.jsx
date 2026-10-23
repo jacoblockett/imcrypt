@@ -15,12 +15,6 @@ import isEqual from "lodash.isequal"
 import { sortString } from "./utils"
 import { addMonths, getUnixTime, addDays, addYears, fromUnixTime } from "date-fns"
 
-let sessionGeneration = 0
-
-export function invalidateSessionRequests() {
-	sessionGeneration++
-}
-
 export const charsetPresets = [
 	{
 		name: "Alphanumeric + Symbols",
@@ -58,21 +52,6 @@ function sortByCreated(a, b) {
 	return a.created - b.created
 }
 
-export const useHomeState = create(() => ({
-	searchInput: "",
-	searchResults: [],
-	selectedItems: [],
-	activeItem: "",
-	copySuccess: false,
-	addItemModal: false,
-	filterItemsModal: false,
-	activeFilter: "AZ",
-	itemOptionsModal: false,
-	addItemsToGroupModal: false,
-	addItemsToGroupModalInput: [],
-	itemDragCount: 0
-}))
-
 export const useLoadedImageState = create(() => ({
 	binary: ""
 }))
@@ -104,9 +83,7 @@ export const useDatabaseState = create((set, get) => ({
 
 	// Loads the database from the backend
 	load: async () => {
-		const generation = sessionGeneration
 		const [err, db, hasTwoFactorAuthentication] = await GetDatabase()
-		if (generation !== sessionGeneration) return [new Error("Vault is locked")]
 
 		if (err) return [new Error(err)]
 		if (!db) return [new Error("Couldn't fetch the database")]
@@ -278,9 +255,7 @@ export const useDatabaseState = create((set, get) => ({
 
 	// .. INSERT
 	insertItems: async itemsToInsert => {
-		const generation = sessionGeneration
 		const [err, data] = await InsertItems(itemsToInsert)
-		if (generation !== sessionGeneration) return [new Error("Vault is locked")]
 
 		if (err) return [new Error(err)]
 
@@ -291,9 +266,7 @@ export const useDatabaseState = create((set, get) => ({
 		return [, itemIds]
 	},
 	insertGroups: async groups => {
-		const generation = sessionGeneration
 		const [err, data] = await InsertGroups(groups)
-		if (generation !== sessionGeneration) return [new Error("Vault is locked")]
 
 		if (err) return [new Error(err)]
 
@@ -306,9 +279,7 @@ export const useDatabaseState = create((set, get) => ({
 
 	// .. UPDATE
 	updateItemsById: async updates => {
-		const generation = sessionGeneration
 		const [err, updatedDatabase] = await UpdateItemsById(updates)
-		if (generation !== sessionGeneration) return [new Error("Vault is locked")]
 
 		if (err) return [new Error(err)]
 
@@ -329,9 +300,7 @@ export const useDatabaseState = create((set, get) => ({
 		return []
 	},
 	updateGroupsById: async (id, update) => {
-		const generation = sessionGeneration
 		const [err, updatedDatabase] = await UpdateGroupsById(id, update)
-		if (generation !== sessionGeneration) return [new Error("Vault is locked")]
 
 		if (err) return [new Error(err)]
 
@@ -342,9 +311,7 @@ export const useDatabaseState = create((set, get) => ({
 
 	// .. DELETE
 	deleteItemsById: async ids => {
-		const generation = sessionGeneration
 		const [err, updatedDatabase] = await DeleteItemsById(ids)
-		if (generation !== sessionGeneration) return [new Error("Vault is locked")]
 
 		if (err) return [new Error(err)]
 
@@ -353,9 +320,7 @@ export const useDatabaseState = create((set, get) => ({
 		return []
 	},
 	deleteGroupsById: async ids => {
-		const generation = sessionGeneration
 		const [err, updatedDatabase] = await DeleteGroupsById(ids)
-		if (generation !== sessionGeneration) return [new Error("Vault is locked")]
 
 		if (err) return [new Error(err)]
 
@@ -629,7 +594,6 @@ export const useLoginPanelState = create((set, get) => ({
 		})
 	},
 	validatePassword: async () => {
-		const generation = sessionGeneration
 		const { passwordInput, originalItem } = get()
 		const { compile } = useRulesetPanelState.getState()
 		const ruleset = compile()
@@ -639,7 +603,6 @@ export const useLoginPanelState = create((set, get) => ({
 
 		if (err) return [new Error(err)]
 
-		if (generation !== sessionGeneration) return [new Error("Vault is locked")]
 		set({ validationReport })
 
 		return []
@@ -661,7 +624,6 @@ export const useLoginPanelState = create((set, get) => ({
 		return [, report.isValid]
 	},
 	generatePassword: async () => {
-		const generation = sessionGeneration
 		const { compile } = useRulesetPanelState.getState()
 		const ruleset = compile()
 		const [err, password] = await GeneratePassword(ruleset)
@@ -672,7 +634,6 @@ export const useLoginPanelState = create((set, get) => ({
 
 		if (err2) return [new Error(err2)]
 
-		if (generation !== sessionGeneration) return [new Error("Vault is locked")]
 		set({ passwordInput: password, validationReport })
 
 		if (!validationReport.isValid) return [new Error("unknown error - generator failed to generate a valid password")]
@@ -836,14 +797,3 @@ export const useRulesetPanelState = create((set, get) => ({
 
 // Ideally this won't be needed because there will be a subscription to the key expiry that automatically
 // navs to auth screen without user interaction
-
-export function clearWorkingState(preserveImage = false) {
-	invalidateSessionRequests()
-	useDatabaseState.setState({ items: {}, groups: {}, settings: {}, loaded: false, hasTwoFactorAuthentication: false })
-	if (!preserveImage) useLoadedImageState.setState({ binary: "" })
-	useFaviconCache.setState({ cache: new Map() })
-	for (const store of [useHomeState, useGroupPanelState, useLoginPanelState, useRulesetPanelState]) {
-		const defaults = store.getInitialState()
-		store.setState(Object.fromEntries(Object.entries(defaults).filter(([, value]) => typeof value !== "function")))
-	}
-}

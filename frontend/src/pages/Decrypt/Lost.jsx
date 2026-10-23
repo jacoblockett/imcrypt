@@ -8,7 +8,6 @@ import { useConfirm } from "../../components/Confirm"
 import useFocusTrap from "../../components/FocusTrap"
 import { useToast } from "../../components/Toast"
 import { useDatabaseState } from "../../store"
-import { restoreWorkingState } from "../../session"
 
 export default function DecryptLost() {
 	const [input, setInput] = useState("")
@@ -38,14 +37,8 @@ export default function DecryptLost() {
 					return toast.showError(err)
 				}
 
-				const [loadErr] = await useDatabaseState.getState().load()
-				if (loadErr) return toast.showError(loadErr.message)
-				try {
-					await restoreWorkingState()
-				} catch (err) {
-					return toast.showError(err.message)
-				}
 				toast.showInfo("TFA has been erased from this file.")
+				useDatabaseState.getState().load()
 				setPath("/home", { mode: "replace" })
 			}
 		})

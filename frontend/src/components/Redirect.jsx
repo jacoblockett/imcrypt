@@ -1,8 +1,5 @@
 import { usePath } from "crossroad"
-import { useEffect, useState } from "react"
-import { flushSync } from "react-dom"
-import { SuspendSession } from "../../wailsjs/go/main/App"
-import { captureWorkingState, clearSuspendedState } from "../session"
+import { useEffect } from "react"
 import { useToast } from "./Toast"
 import { useConfirm } from "./Confirm"
 
@@ -11,38 +8,18 @@ export default function Redirect() {
 	const toast = useToast()
 	const confirm = useConfirm()
 
-	const [locking, setLocking] = useState(false)
-
-	async function handleSessionLock() {
-		// Cover the old view before serializing any decrypted working state.
-		flushSync(() => setLocking(true))
-		let saved = false
+	function handleRedirectToLogin() {
+		console.trace("expired")
 		try {
-			const snapshot = captureWorkingState()
-			document.querySelector(".session-lock-cover")?.focus()
-			const [err] = await SuspendSession(JSON.stringify(snapshot))
-			if (err) throw new Error(err)
-			saved = true
-		} catch (err) {
-			console.error("Session suspension failed:", err)
-		} finally {
-			flushSync(() => setPath("/decrypt/text", { mode: "replace" }))
+			toast.showError("Your session has expired")
 			confirm.close()
-			clearSuspendedState()
-			setLocking(false)
-			toast.showError(
-				saved ? "Your session has expired" : "Session expired; unfinished work could not be preserved."
-			)
+			setPath("/decrypt/text", { mode: "replace" })
+		} catch (err) {
+			console.error(err)
 		}
 	}
 
 	useEffect(() => {
-		const off = window.runtime.EventsOn("e_authlock", handleSessionLock)
-		return () => {
-			if (typeof off === "function") off()
-			else window.runtime.EventsOff("e_authlock")
-		}
+		window.runtime.EventsOn("e_authexp", handleRedirectToLogin)
 	}, [])
-
-	return locking ? <div className="session-lock-cover" aria-label="Locking vault" tabIndex={-1} /> : null
 }

@@ -4,8 +4,7 @@ import Button from "../../components/Button"
 import RightArrow from "../../components/svg/RightArrow"
 import { useToast } from "../../components/Toast"
 import { usePath } from "crossroad"
-import { useDatabaseState, useLoadedImageState, useLoginPanelState, useRulesetPanelState, clearWorkingState } from "../../store"
-import { restoreWorkingState } from "../../session"
+import { useDatabaseState, useLoadedImageState, useLoginPanelState, useRulesetPanelState } from "../../store"
 import { ValidateTwoFactorCode, CloseSession } from "../../../wailsjs/go/main/App"
 import useFocusTrap from "../../components/FocusTrap"
 
@@ -27,8 +26,7 @@ export default function DecryptAuth() {
 
 		const [loadErr] = await useDatabaseState.getState().load()
 		if (loadErr) throw loadErr
-		await restoreWorkingState()
-		setCodeInput("")
+
 		setPath("/home", { mode: "replace" })
 	}
 
@@ -38,8 +36,11 @@ export default function DecryptAuth() {
 
 	async function handleRelease() {
 		await CloseSession()
+
+		useLoadedImageState.setState({ binary: null })
+		useLoginPanelState.setState({ isOpen: false })
+		useRulesetPanelState.setState({ isOpen: false })
 		setPath("/", { mode: "replace" })
-		clearWorkingState()
 	}
 
 	useEffect(() => {

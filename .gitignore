@@ -2,4 +2,5 @@
 build/bin
 node_modules
 frontend/dist
-.vscode/frontend/wailsjs/
+.vscode
+frontend/wailsjs/

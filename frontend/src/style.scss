@@ -2460,11 +2460,3 @@ input[type="date"] + .action-button-wrapper svg {
 	min-height: 0;
 	overflow-y: auto;
 }
-
-// Hide decrypted UI during the encryption handoff.
-.session-lock-cover {
-	position: fixed;
-	inset: 0;
-	z-index: 2147483647;
-	background: $background;
-}

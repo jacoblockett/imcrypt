@@ -34,18 +34,13 @@ import (
 
 type App struct {
 	ctx context.Context
-	fd  *file.File
+	fd *file.File
 	aet *time.Timer
 
-	authMu           sync.Mutex
+	authMu sync.Mutex
 	passwordVerified bool
-	vaultUnlocked    bool
-	authGeneration   uint64
-
-	snapshot        []byte
-	snapshotID      []byte
-	snapshotPending bool
-	snapshotGrace   *time.Timer
+	vaultUnlocked bool
+	authGeneration uint64
 }
 
 // NewApp creates a new App application struct
@@ -76,7 +71,6 @@ func (a *App) startup(ctx context.Context) {
 func (a *App) shutdown() {
 	fmt.Println("App has been shut down")
 	a.invalidateAuth()
-	a.discardSnapshot()
 	if a.fd != nil {
 		a.fd.Close()
 		a.fd = nil
@@ -86,7 +80,6 @@ func (a *App) shutdown() {
 // API: Closes the current login session and releases the file
 func (a *App) CloseSession() []any {
 	a.invalidateAuth()
-	a.discardSnapshot()
 	if a.fd != nil {
 		a.fd.Close()
 		a.fd = nil
@@ -115,7 +108,6 @@ func (a *App) OpenFileDialog(title string, pattern string) []any {
 func (a *App) LoadImage(path string) []any {
 	// Changing the loaded image invalidates every prior authentication factor.
 	a.invalidateAuth()
-	a.discardSnapshot()
 	if a.fd != nil {
 		a.fd.Close()
 		a.fd = nil
@@ -156,7 +148,6 @@ func (a *App) HasStorage() []any {
 // API: Initializes a new Storage struct onto the loaded image
 func (a *App) InitializeStorage(password string) []any {
 	a.invalidateAuth()
-	a.discardSnapshot()
 	if len(password) < 1 {
 		return []any{"password must be at least 1 character long"}
 	}
@@ -332,9 +323,7 @@ func (a *App) ValidateTwoFactorCode(code string, shouldConfirm bool) []any {
 				return []any{err.Error()}
 			}
 		}
-		if !a.completeSecondFactor() {
-			return []any{"session expired"}
-		}
+		a.setAuth(true, true)
 	} else if shouldConfirm {
 		store.TwoFactorConfirmed = []byte{1}
 		if err := a.fd.WriteImcryptStorage(store); err != nil {
@@ -363,9 +352,7 @@ func (a *App) ValidateTwoFactorRecoveryCode(code string) []any {
 	valid := crypto.ValidateHMAC(hashed, store.TwoFactorRecoveryHash)
 	if valid {
 		// Recovery code serves as the alternative second factor.
-		if !a.completeSecondFactor() {
-			return []any{"session expired"}
-		}
+		a.setAuth(true, true)
 	}
 	return []any{nil, valid}
 }
@@ -803,6 +790,19 @@ func (a *App) createAuthTimeout(timeInMilliseconds int) {
 		a.aet.Stop()
 	}
 	dur := time.Duration(timeInMilliseconds) * time.Millisecond
-	a.aet = time.AfterFunc(dur, func() { a.lockSession(generation) })
+	a.aet = time.AfterFunc(dur, func() {
+		a.authMu.Lock()
+		if a.authGeneration != generation {
+			a.authMu.Unlock()
+			return
+		}
+		a.authGeneration++
+		a.passwordVerified = false
+		a.vaultUnlocked = false
+		a.aet = nil
+		_ = key.Delete()
+		a.authMu.Unlock()
+		runtime.EventsEmit(a.ctx, "e_authexp")
+	})
 	a.authMu.Unlock()
 }
