@@ -42,7 +42,7 @@ func recoveryFixture(t *testing.T) (string, []byte, []byte, *storage.Storage) {
 
 func TestJournalProtectsOriginalDuringInterruptedWrite(t *testing.T) {
 	path, original, _, store := recoveryFixture(t)
-	journal, err := newJournal(path, original, []byte("future image"), store.Id, store.PasswordSalt)
+	journal, err := newJournal(path, original, []byte("future image"), store.Id, store.PasswordSalt, store.KDFVersion)
 	if err != nil { t.Fatal(err) }
 	if filepath.Ext(journal) != "" || !IsJournal(journal) {
 		t.Fatalf("journal has an identifiable image filename: %s", journal)
@@ -69,7 +69,7 @@ func TestJournalProtectsOriginalDuringInterruptedWrite(t *testing.T) {
 
 func TestJournalRecoversDeletedImage(t *testing.T) {
 	path, original, _, store := recoveryFixture(t)
-	journal, err := newJournal(path, original, []byte("future"), store.Id, store.PasswordSalt)
+	journal, err := newJournal(path, original, []byte("future"), store.Id, store.PasswordSalt, store.KDFVersion)
 	if err != nil { t.Fatal(err) }
 	if err := os.Remove(path); err != nil { t.Fatal(err) }
 	_, rec, err := FindRecovery(journal, "master-password")
@@ -82,7 +82,7 @@ func TestJournalRecoversDeletedImage(t *testing.T) {
 
 func TestJournalTamperingFailsAuthentication(t *testing.T) {
 	path, original, _, store := recoveryFixture(t)
-	journal, err := newJournal(path, original, []byte("future"), store.Id, store.PasswordSalt)
+	journal, err := newJournal(path, original, []byte("future"), store.Id, store.PasswordSalt, store.KDFVersion)
 	if err != nil { t.Fatal(err) }
 	raw, err := os.ReadFile(journal)
 	if err != nil { t.Fatal(err) }
@@ -105,7 +105,7 @@ func TestUnresolvedJournalBlocksWrite(t *testing.T) {
 	if err := vault.WriteImcryptStorage(store); err != nil { t.Fatal(err) }
 	committed, err := os.ReadFile(path)
 	if err != nil { t.Fatal(err) }
-	journal, err := newJournal(path, committed, []byte("future image"), store.Id, store.PasswordSalt)
+	journal, err := newJournal(path, committed, []byte("future image"), store.Id, store.PasswordSalt, store.KDFVersion)
 	if err != nil { t.Fatal(err) }
 	if err := vault.WriteImcryptStorage(store); err == nil {
 		t.Fatal("unresolved recovery journal was overwritten")
