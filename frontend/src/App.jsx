@@ -1,21 +1,9 @@
 import { useEffect, useRef } from "react"
-import { useToast } from "./components/Toast"
-import { useDatabaseState } from "./store"
 
 export default function App({ children }) {
 	const mouseDownTarget = useRef()
 
 	useEffect(() => {
-		window.runtime.EventsOn("e_storagewrite", async () => {
-			useToast().showError("Most recent action failed. Please try again or report this issue if it continues.")
-
-			const [err] = await useDatabaseState.getState().load()
-
-			if (err) {
-				throw new Error(err)
-			}
-		})
-
 		function handleMouseDown(e) {
 			mouseDownTarget.current = e.target
 		}

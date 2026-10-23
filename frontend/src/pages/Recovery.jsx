@@ -18,7 +18,7 @@ export default function Recovery() {
 	const [step, setStep] = useState("password")
 	const [busy, setBusy] = useState(false)
 
-	async function openVault() {
+	async function openVault(alreadyUnlocked = false) {
 		const [existsErr, hasStorage] = await HasStorage()
 		if (existsErr) throw new Error(existsErr)
 		const [imageErr, binary] = await ReadLoadedImage()
@@ -29,8 +29,10 @@ export default function Recovery() {
 			setPath("/encrypt/text", { mode: "replace" })
 			return
 		}
-		const [err] = await UnlockLoadedImage(password)
-		if (err) throw new Error(err)
+		if (!alreadyUnlocked) {
+			const [err] = await UnlockLoadedImage(password)
+			if (err) throw new Error(err)
+		}
 		const [authErr, needsTOTP] = await HasTwoFactorAuthentication()
 		if (authErr) throw new Error(authErr)
 		if (needsTOTP) {
@@ -79,11 +81,22 @@ export default function Recovery() {
 		run(async () => {
 			const [openErr] = await OpenRecoveryCurrent(password)
 			if (openErr) throw new Error(openErr)
+			let unlocked = false
 			if (deleteJournal) {
+				const [existsErr, hasStorage] = await HasStorage()
+				if (existsErr) throw new Error(existsErr)
+				if (!hasStorage && info.state !== "original" && info.state !== "completed") {
+					throw new Error("Current image cannot be verified. Restore the recovery copy or keep it.")
+				}
+				if (hasStorage) {
+					const [verifyErr] = await UnlockLoadedImage(password)
+					if (verifyErr) throw new Error("Current image could not be unlocked. Recovery journal was kept.")
+					unlocked = true
+				}
 				const [deleteErr] = await DeleteRecovery(password)
 				if (deleteErr) throw new Error(deleteErr)
 			}
-			await openVault()
+			await openVault(unlocked)
 			if (!deleteJournal) toast.showInfo("Recovery journal retained. Further saves require resolving it first.")
 		})
 	}

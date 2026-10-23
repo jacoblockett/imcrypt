@@ -214,7 +214,15 @@ func RestoreRecovery(journalPath, password string) (string, error) {
 	j, err := journalWithPassword(journalPath, password)
 	if err != nil { return "", err }
 	path := filepath.Join(filepath.Dir(journalPath), j.Name)
-	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0600)
+	flags := os.O_RDWR
+	if info, statErr := os.Lstat(path); os.IsNotExist(statErr) {
+		flags |= os.O_CREATE | os.O_EXCL
+	} else if statErr != nil {
+		return "", statErr
+	} else if !info.Mode().IsRegular() {
+		return "", fmt.Errorf("recovery target is not a regular file")
+	}
+	f, err := os.OpenFile(path, flags, 0600)
 	if err != nil { return "", err }
 	if err = f.Truncate(0); err == nil {
 		_, err = f.WriteAt(j.Original, 0)

@@ -136,12 +136,12 @@ func (a *App) LoadImage(path string) []any {
 
 	f, err := fs.OpenFile(path)
 	if err != nil { return []any{err.Error()} }
-	candidates, err := file.Candidates(path)
-	if err != nil {
-		f.Close()
-		return []any{err.Error()}
-	}
+	candidates, scanErr := file.Candidates(path)
 	valid, err := f.IsPNGOrJPG()
+	if scanErr != nil && !valid {
+		f.Close()
+		return []any{scanErr.Error()}
+	}
 	if err != nil || (!valid && len(candidates) == 0) {
 		f.Close()
 		return []any{"file is not a png or jpg image"}
@@ -159,6 +159,9 @@ func (a *App) FocusWindow() {
 
 // API: Checks if the loaded image has an Imcrypt storage file
 func (a *App) HasStorage() []any {
+	a.writeMu.Lock()
+	defer a.writeMu.Unlock()
+	if a.fd == nil { return []any{"no image loaded"} }
 	hasStorage, err := a.fd.HasStorage()
 	if err != nil {
 		return []any{err.Error()}
@@ -313,6 +316,8 @@ func (a *App) DeleteTwoFactorSecret() []any {
 
 // API: Checks if TFA is setup on storage
 func (a *App) HasTwoFactorAuthentication() []any {
+	a.writeMu.Lock()
+	defer a.writeMu.Unlock()
 	store, err := a.readPasswordVerifiedStorage()
 	if err != nil {
 		return []any{err.Error()}
@@ -367,6 +372,8 @@ func (a *App) ValidateTwoFactorCode(code string, shouldConfirm bool) []any {
 
 // API: Validates the incoming recovery code against the stored recovery code hash/salt
 func (a *App) ValidateTwoFactorRecoveryCode(code string) []any {
+	a.writeMu.Lock()
+	defer a.writeMu.Unlock()
 	store, err := a.readPasswordVerifiedStorage()
 	if err != nil {
 		return []any{err.Error()}
@@ -393,6 +400,9 @@ func (a *App) ValidateTwoFactorRecoveryCode(code string) []any {
 
 // API: Reads into a []byte the contents of the loaded image
 func (a *App) ReadLoadedImage() []any {
+	a.writeMu.Lock()
+	defer a.writeMu.Unlock()
+	if a.fd == nil { return []any{"no image loaded"} }
 	data, err := a.fd.ReadAll()
 	if err != nil {
 		key.Delete()
@@ -445,6 +455,8 @@ func (a *App) UnlockLoadedImage(password string) []any {
 
 // API: Retrieves the database
 func (a *App) GetDatabase() []any {
+	a.writeMu.Lock()
+	defer a.writeMu.Unlock()
 	storage, database, err := a.pull()
 	if err != nil {
 		return []any{err.Error()}
@@ -456,6 +468,8 @@ func (a *App) GetDatabase() []any {
 // API: Checks if the loaded storage's id and the key's id match, validating they are
 // meant to be used together
 func (a *App) IsAuthenticated() []any {
+	a.writeMu.Lock()
+	defer a.writeMu.Unlock()
 	if err := a.requireUnlocked(); err != nil {
 		return []any{nil, false}
 	}
@@ -638,6 +652,8 @@ func (a *App) GeneratePassword(ruleset database.Ruleset, previousPasswords []str
 
 // API: Validates a password against the provided rules
 func (a *App) ValidatePassword(p string, ruleset database.Ruleset, pp []string) []any {
+	a.writeMu.Lock()
+	defer a.writeMu.Unlock()
 	_, database, err := a.pull()
 	if err != nil {
 		return []any{err.Error()}
