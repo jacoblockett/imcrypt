@@ -117,3 +117,26 @@ func TestUnresolvedJournalBlocksWrite(t *testing.T) {
 	candidates, err := Candidates(path)
 	if err != nil || len(candidates) != 0 { t.Fatalf("successful write left a journal: %v %v", candidates, err) }
 }
+
+func TestJournalSetupFailureDoesNotModifyImage(t *testing.T) {
+	path, original, _, store := recoveryFixture(t)
+	fd, err := os.OpenFile(path, os.O_RDWR, 0600)
+	if err != nil { t.Fatal(err) }
+	defer fd.Close()
+	vault := &File{File: fd, Path: path}
+
+	// An invalid journal key-derivation salt must fail before the original
+	// file is truncated. This checks the actual production write path.
+	store.PasswordSalt = []byte("wrong-length")
+	if err := vault.WriteImcryptStorage(store); err == nil {
+		t.Fatal("invalid journal preparation unexpectedly succeeded")
+	}
+	current, err := os.ReadFile(path)
+	if err != nil || !bytes.Equal(current, original) {
+		t.Fatal("journal preparation failure changed the original image")
+	}
+	candidates, err := Candidates(path)
+	if err != nil || len(candidates) != 0 {
+		t.Fatalf("journal failure left unexpected recovery files: %v %v", candidates, err)
+	}
+}
