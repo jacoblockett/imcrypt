@@ -97,7 +97,7 @@ func TestJournalTamperingFailsAuthentication(t *testing.T) {
 }
 
 func TestUnresolvedJournalBlocksWrite(t *testing.T) {
-	path, original, _, store := recoveryFixture(t)
+	path, _, _, store := recoveryFixture(t)
 	f, err := os.OpenFile(path, os.O_RDWR, 0600)
 	if err != nil { t.Fatal(err) }
 	defer f.Close()
