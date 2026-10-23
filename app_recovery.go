@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"path/filepath"
 
@@ -17,7 +18,17 @@ func (a *App) recoverySelection() string {
 func (a *App) matchingRecovery(password string) (string, *file.Recovery, error) {
 	selected := a.recoverySelection()
 	if selected == "" { return "", nil, fmt.Errorf("no file selected") }
-	return file.FindRecovery(selected, password)
+	journalPath, rec, err := file.FindRecovery(selected, password)
+	if err != nil || rec == nil { return journalPath, rec, err }
+	if a.fd != nil {
+		// A readable vault must match the authenticated journal's identity.
+		// Damaged images may not expose an ID and must remain recoverable.
+		store, readErr := a.fd.ReadImcryptStorage()
+		if readErr == nil && !bytes.Equal(store.Id, rec.VaultID) {
+			return "", nil, fmt.Errorf("recovery journal belongs to a different vault")
+		}
+	}
+	return journalPath, rec, nil
 }
 
 // API: Authenticates a recovery journal without requiring a readable image.
