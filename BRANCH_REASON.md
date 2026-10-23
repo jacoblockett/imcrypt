@@ -1,15 +1,19 @@
-# Branch reason — Fix 5B: protection against crash-persistent credentials
+# Branch reason — Fix 5B: crash-persistent credential protection
 
 ## Problem
 
-The current OS keyring can retain an Imcrypt credential after an unexpected process termination, including a credential sufficient to decrypt a captured vault file. Restart cleanup cannot protect the interval before Imcrypt next starts.
+Imcrypt stores a directly reusable password-derived vault credential in the OS keyring. A crash or forced termination may prevent cleanup; on Windows, the credential is stored persistently. Someone with access to the leftover keyring credential and a matching vault file can decrypt the file without the user's master password. Deletion attempts and startup cleanup do not guarantee that credential is unavailable after a crash.
 
-## Intended work (deferred)
+## Fix
 
-Investigate and, only after separate approval, implement a portable way to prevent a leftover OS keyring entry from being a directly reusable vault credential. One research candidate is to store a session-wrapped credential in the existing keyring while keeping a fresh wrapping secret process-local, but its realistic memory-dump and crash tradeoffs must be validated first.
+Preserve the existing `key.Set/Get/Delete` API and the cross-platform OS keyring. On each `Set`, generate a fresh random 256-bit process-local wrapping key, encrypt the existing credential using the project's AES-GCM helper, and store only ciphertext in the OS keyring. `Get` unwraps it for authorized database operations. `Delete` drops the process-local wrapping key even if OS credential removal fails. A fresh master-password login replaces any leftover keyring ciphertext without a separate recovery procedure.
 
-Keep password-only, fully offline, cross-platform file portability; preserve Imcrypt's vault format and one-login UX if feasible. Do not claim that copying both a live session's memory and matching ciphertext can be rendered harmless.
+## Scope and guarantees
 
-## Scope boundary
+The vault file format, master-password derivation, TOTP, offline portability, UI, and immediate-save behavior remain unchanged. No hardware, network service, new dependency, fallback credential cache, extra password prompts, or new user-facing recovery controls.
 
-Do not implement 5A error-handling work or 5C vault-write integrity work here. No implementation changes yet; this branch records the reserved scope.
+The purpose is to make a **keyring-only** credential recovered after process termination insufficient to decrypt a vault. This does **not** protect a matching vault and live process-memory dump captured together, nor guarantee zero traces of keys remain in garbage-collected memory. Multi-instance interactions with the shared OS keyring entry are not redesigned here.
+
+## Acceptance
+
+Validate wrapped-key round trips, fresh key per login, leftover ciphertext after simulated crash, failed OS deletion, failed credential replacement, tampering, password/TOTP authentication, timeout-and-snapshot restoration, and vault operations. Normal login, logout, and crash restart must not gain new friction.
