@@ -25,7 +25,6 @@ const journalNameBytes = 16
 const journalPasswordSaltSize = 8
 const journalNewPasswordSaltSize = 16
 const journalKeySaltSize = 16
-const journalHeaderSize = journalPasswordSaltSize + journalKeySaltSize
 const journalArgonPrefix = "\xf5\xda\x80\x63\xde\x52\x4b\x19"
 
 type Recovery struct {
