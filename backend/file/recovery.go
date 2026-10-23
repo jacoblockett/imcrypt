@@ -23,8 +23,10 @@ import (
 const journalPrefix = "~"
 const journalNameBytes = 16
 const journalPasswordSaltSize = 8
+const journalNewPasswordSaltSize = 16
 const journalKeySaltSize = 16
 const journalHeaderSize = journalPasswordSaltSize + journalKeySaltSize
+const journalArgonPrefix = "imcrypt:journal:v2:"
 
 type Recovery struct {
 	Version int
@@ -66,17 +68,38 @@ func Candidates(path string) ([]string, error) {
 	return result, nil
 }
 
-func decodeJournal(raw, passwordKey []byte) (*Recovery, error) {
-	if len(raw) < journalHeaderSize+12+16 {
-		return nil, fmt.Errorf("invalid recovery journal")
+type journalHeader struct {
+	kdfVersion int
+	passwordSalt []byte
+	keySalt []byte
+	ciphertext []byte
+}
+
+func parseJournal(raw []byte) (journalHeader, error) {
+	version, offset, passwordSaltSize := crypto.KDFLegacy, 0, journalPasswordSaltSize
+	if bytes.HasPrefix(raw, []byte(journalArgonPrefix)) {
+		version, offset, passwordSaltSize = crypto.KDFArgon2id, len(journalArgonPrefix), journalNewPasswordSaltSize
 	}
-	keySalt := raw[journalPasswordSaltSize:journalHeaderSize]
-	encryptionKey, err := crypto.Hash(passwordKey, keySalt)
+	if len(raw) < offset+passwordSaltSize+journalKeySaltSize+12+16 {
+		return journalHeader{}, fmt.Errorf("invalid recovery journal")
+	}
+	return journalHeader{
+		kdfVersion: version,
+		passwordSalt: raw[offset:offset+passwordSaltSize],
+		keySalt: raw[offset+passwordSaltSize:offset+passwordSaltSize+journalKeySaltSize],
+		ciphertext: raw[offset+passwordSaltSize+journalKeySaltSize:],
+	}, nil
+}
+
+func decodeJournal(raw, passwordKey []byte) (*Recovery, error) {
+	header, err := parseJournal(raw)
+	if err != nil { return nil, err }
+	encryptionKey, err := crypto.Hash(passwordKey, header.keySalt)
 	if err != nil {
 		return nil, err
 	}
 	defer clear(encryptionKey)
-	plain, err := crypto.Decrypt(raw[journalHeaderSize:], encryptionKey)
+	plain, err := crypto.Decrypt(header.ciphertext, encryptionKey)
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +108,7 @@ func decodeJournal(raw, passwordKey []byte) (*Recovery, error) {
 	if err := utils.Degob(plain, &journal); err != nil {
 		return nil, err
 	}
-	if journal.Version != 1 || journal.Name == "" || journal.Name != filepath.Base(journal.Name) ||
+	if journal.Version != header.kdfVersion+1 || journal.Name == "" || journal.Name != filepath.Base(journal.Name) ||
 		journal.Name == "." || journal.Name == ".." || len(journal.Original) == 0 ||
 		sha256.Sum256(journal.Original) != journal.Before {
 		return nil, fmt.Errorf("invalid recovery journal contents")
@@ -99,24 +122,35 @@ func decodeJournal(raw, passwordKey []byte) (*Recovery, error) {
 func journalWithPassword(path, password string) (*Recovery, error) {
 	raw, err := os.ReadFile(path)
 	if err != nil { return nil, err }
-	if len(raw) < journalHeaderSize+12+16 { return nil, fmt.Errorf("invalid recovery journal") }
-	passwordKey, err := crypto.Hash([]byte(password), raw[:journalPasswordSaltSize])
+	header, err := parseJournal(raw)
+	if err != nil { return nil, err }
+	passwordKey, err := crypto.PasswordKey([]byte(password), header.passwordSalt, header.kdfVersion)
 	if err != nil { return nil, err }
 	defer clear(passwordKey)
 	return decodeJournal(raw, passwordKey)
 }
 
-func journalWithKey(path string, k key.Data, passwordSalt []byte) (*Recovery, error) {
+func journalWithKey(path string, k key.Data, passwordSalt []byte, kdfVersion int) (*Recovery, error) {
 	raw, err := os.ReadFile(path)
 	if err != nil { return nil, err }
-	if len(raw) < journalHeaderSize || !bytes.Equal(raw[:journalPasswordSaltSize], passwordSalt) {
-		return nil, fmt.Errorf("journal does not match the vault password salt")
+	header, err := parseJournal(raw)
+	if err != nil { return nil, err }
+	if header.kdfVersion != kdfVersion || !bytes.Equal(header.passwordSalt, passwordSalt) {
+		return nil, fmt.Errorf("journal does not match the vault KDF and password salt")
 	}
 	return decodeJournal(raw, k.Key)
 }
 
-func newJournal(path string, oldImage, newImage []byte, storeID, passwordSalt []byte) (string, error) {
-	if len(passwordSalt) != journalPasswordSaltSize { return "", fmt.Errorf("invalid vault password salt") }
+func newJournal(path string, oldImage, newImage []byte, storeID, passwordSalt []byte, kdfVersion int) (string, error) {
+	passwordSaltSize := journalPasswordSaltSize
+	switch kdfVersion {
+	case crypto.KDFLegacy:
+	case crypto.KDFArgon2id:
+		passwordSaltSize = journalNewPasswordSaltSize
+	default:
+		return "", fmt.Errorf("unsupported journal KDF version")
+	}
+	if len(passwordSalt) != passwordSaltSize { return "", fmt.Errorf("invalid vault password salt") }
 	k, err := key.Get()
 	if err != nil { return "", err }
 	if !bytes.Equal(k.Id, storeID) { return "", fmt.Errorf("journal vault ID does not match session") }
@@ -126,7 +160,7 @@ func newJournal(path string, oldImage, newImage []byte, storeID, passwordSalt []
 	if err != nil { return "", err }
 	defer clear(encryptionKey)
 	meta := Recovery{
-		Version: 1, Name: filepath.Base(path), VaultID: bytes.Clone(storeID),
+		Version: kdfVersion+1, Name: filepath.Base(path), VaultID: bytes.Clone(storeID),
 		Created: time.Now().Unix(), Original: oldImage,
 		Before: sha256.Sum256(oldImage), After: sha256.Sum256(newImage),
 	}
@@ -135,7 +169,8 @@ func newJournal(path string, oldImage, newImage []byte, storeID, passwordSalt []
 	defer clear(plain)
 	encrypted, err := crypto.Encrypt(plain, encryptionKey)
 	if err != nil { return "", err }
-	raw := make([]byte, 0, journalHeaderSize+len(encrypted))
+	raw := make([]byte, 0, len(journalArgonPrefix)+journalNewPasswordSaltSize+journalKeySaltSize+len(encrypted))
+	if kdfVersion == crypto.KDFArgon2id { raw = append(raw, []byte(journalArgonPrefix)...) }
 	raw = append(raw, passwordSalt...)
 	raw = append(raw, salt...)
 	raw = append(raw, encrypted...)
@@ -156,7 +191,7 @@ func newJournal(path string, oldImage, newImage []byte, storeID, passwordSalt []
 	if err == nil { err = f.Close() }
 	if err != nil { return "", err }
 	// Do not touch the original until the persisted journal authenticates.
-	verify, err := journalWithKey(journalPath, k, passwordSalt)
+	verify, err := journalWithKey(journalPath, k, passwordSalt, kdfVersion)
 	if err != nil { return "", err }
 	if verify.Name != meta.Name || verify.Before != meta.Before || verify.After != meta.After ||
 		!bytes.Equal(verify.VaultID, storeID) {
@@ -168,11 +203,11 @@ func newJournal(path string, oldImage, newImage []byte, storeID, passwordSalt []
 
 // Never replace an unresolved recovery journal or discard one the user
 // explicitly chose to retain.
-func checkPending(path string, k key.Data, passwordSalt []byte) error {
+func checkPending(path string, k key.Data, passwordSalt []byte, kdfVersion int) error {
 	candidates, err := Candidates(path)
 	if err != nil { return err }
 	for _, candidate := range candidates {
-		j, err := journalWithKey(candidate, k, passwordSalt)
+		j, err := journalWithKey(candidate, k, passwordSalt, kdfVersion)
 		if err != nil || j.Name != filepath.Base(path) || !bytes.Equal(j.VaultID, k.Id) { continue }
 		return fmt.Errorf("unresolved recovery journal exists for this image; reopen it and resolve recovery before saving")
 	}
