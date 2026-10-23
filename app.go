@@ -179,17 +179,17 @@ func (a *App) InitializeStorage(password string) []any {
 		return []any{"password must be at least 1 character long"}
 	}
 
-	passwordSalt, err := crypto.GenerateSalt(8)
+	passwordSalt, err := crypto.GenerateSalt(16)
 	if err != nil {
 		return []any{err.Error()}
 	}
 
-	passwordHash, err := crypto.Hash([]byte(password), passwordSalt)
+	passwordHash, err := crypto.PasswordKey([]byte(password), passwordSalt, crypto.KDFArgon2id)
 	if err != nil {
 		return []any{err.Error()}
 	}
 
-	encryptionSalt, err := crypto.GenerateSalt(8)
+	encryptionSalt, err := crypto.GenerateSalt(16)
 	if err != nil {
 		return []any{err.Error()}
 	}
@@ -197,6 +197,7 @@ func (a *App) InitializeStorage(password string) []any {
 	storageId, _ := gonanoid.New()
 
 	store := storage.Storage{
+		KDFVersion:     crypto.KDFArgon2id,
 		Id:             []byte(storageId),
 		EncryptionSalt: encryptionSalt,
 		PasswordSalt:   passwordSalt,
@@ -424,7 +425,7 @@ func (a *App) UnlockLoadedImage(password string) []any {
 	if err != nil {
 		return []any{err.Error()}
 	}
-	passwordHash, err := crypto.Hash([]byte(password), store.PasswordSalt)
+	passwordHash, err := crypto.PasswordKey([]byte(password), store.PasswordSalt, store.KDFVersion)
 	if err != nil {
 		return []any{err.Error()}
 	}
