@@ -47,7 +47,9 @@ func (s *Storage) associatedData() ([]byte, error) {
 
 func (s *Storage) SetDatabase(database *database.Database) error {
 	aad, err := s.associatedData()
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	keyData, err := key.Get()
 	if err != nil {
 		return err
@@ -83,7 +85,9 @@ func (s *Storage) SetDatabase(database *database.Database) error {
 
 func (s *Storage) GetDatabase() (*database.Database, error) {
 	aad, err := s.associatedData()
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	keyData, err := key.Get()
 	if err != nil {
 		return nil, err
