@@ -43,9 +43,13 @@ func (a *App) RestoreRecovery(password string) []any {
 	journalPath, rec, err := a.matchingRecovery(password)
 	if err != nil { return []any{err.Error()} }
 	if rec == nil { return []any{"no matching recovery journal"} }
+	// Keep a direct reference to the journal if restoration fails after
+	// closing the damaged image. The user can retry without reselecting it.
+	a.recoveryPath = journalPath
 	if a.fd != nil {
-		if err := a.fd.Close(); err != nil { return []any{err.Error()} }
+		closeErr := a.fd.Close()
 		a.fd = nil
+		if closeErr != nil { return []any{closeErr.Error()} }
 	}
 	path, err := file.RestoreRecovery(journalPath, password)
 	if err != nil { return []any{err.Error()} }
