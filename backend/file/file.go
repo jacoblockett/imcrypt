@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"image"
 	"imcrypt_v3/backend/storage"
+	"imcrypt_v3/backend/key"
 	"imcrypt_v3/backend/utils"
 	"io"
 	"os"
@@ -71,30 +72,48 @@ func (f *File) ReadImcryptStorage() (*storage.Storage, error) {
 }
 
 // Writes the Storage onto the file
-func (f *File) WriteImcryptStorage(storage *storage.Storage) error {
+func (f *File) WriteImcryptStorage(store *storage.Storage) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
-	gobifiedStorage, err := utils.Gobify(storage)
-	if err != nil {
+	gobifiedStorage, err := utils.Gobify(store)
+	if err != nil { return err }
+	if _, err := f.Seek(0, 0); err != nil { return err }
+	original, err := io.ReadAll(f)
+	if err != nil { return err }
+
+	// Do all encoding and validation before the destructive in-place write.
+	var prepared bytes.Buffer
+	if err := steg.Encode(bytes.NewReader(original), bytes.NewReader(gobifiedStorage), &prepared); err != nil {
 		return err
 	}
-
-	f.Seek(0, 0)
-
-	dataBuf, err := io.ReadAll(f)
-	if err != nil {
-		return err
+	var decoded bytes.Buffer
+	if err := steg.Decode(bytes.NewReader(prepared.Bytes()), &decoded); err != nil { return err }
+	if !bytes.Equal(decoded.Bytes(), gobifiedStorage) {
+		return fmt.Errorf("prepared vault image failed steganographic verification")
 	}
 
-	f.Truncate(0)
-	f.Seek(0, 0)
+	k, err := key.Get()
+	if err != nil { return err }
+	if err := checkPending(f.Path, k, store.PasswordSalt); err != nil { return err }
+	journalPath, err := newJournal(f.Path, original, prepared.Bytes(), store.Id, store.PasswordSalt)
+	if err != nil { return err }
 
-	err = steg.Encode(bytes.NewReader(dataBuf), bytes.NewReader(gobifiedStorage), f)
-	if err != nil {
-		return err
-	}
+	// The synced recovery journal remains on disk if any step below fails.
+	if err := f.Truncate(0); err != nil { return err }
+	if _, err := f.Seek(0, 0); err != nil { return err }
+	n, err := f.Write(prepared.Bytes())
+	if err != nil { return err }
+	if n != prepared.Len() { return fmt.Errorf("short vault image write") }
+	if err := f.Sync(); err != nil { return err }
+	if _, err := f.Seek(0, 0); err != nil { return err }
+	written, err := io.ReadAll(f)
+	if err != nil { return err }
+	if !bytes.Equal(written, prepared.Bytes()) { return fmt.Errorf("vault image verification failed") }
 
+	// A cleanup failure leaves a harmless journal of the previous version;
+	// checkPending can remove it before the next save.
+	_ = os.Remove(journalPath)
 	return nil
 }
 

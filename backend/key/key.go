@@ -1,9 +1,13 @@
 package key
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"sync"
 	"time"
+
+	"imcrypt_v3/backend/crypto"
 
 	"github.com/zalando/go-keyring"
 )
@@ -11,6 +15,10 @@ import (
 var (
 	ErrKeyExpired  = errors.New("key has expired")
 	ErrKeyNotFound = errors.New("key not found")
+
+	sessionMu  sync.Mutex
+	sessionKey [32]byte
+	hasSession bool
 )
 
 type Data struct {
@@ -36,37 +44,75 @@ func fromJSON(jsonStr string) (Data, error) {
 	return data, nil
 }
 
+// The keyring stores only ciphertext. The key required to unwrap it exists
+// exclusively in this process and is replaced for every authenticated session.
 func Set(id, key []byte) error {
-	Delete() // remove stale keys
+	wrappingKey, err := crypto.GenerateSalt(len(sessionKey))
+	if err != nil {
+		return err
+	}
+	defer clear(wrappingKey)
 
-	created := time.Now().UnixMilli()
 	data := Data{
 		Id:      id,
 		Key:     key,
-		Created: created,
+		Created: time.Now().UnixMilli(),
 	}
-	json, err := toJSON(data)
+	encoded, err := toJSON(data)
+	if err != nil {
+		return err
+	}
+	encrypted, err := crypto.Encrypt([]byte(encoded), wrappingKey)
 	if err != nil {
 		return err
 	}
 
-	return keyring.Set("Imcrypt", "key", json)
+	sessionMu.Lock()
+	defer sessionMu.Unlock()
+
+	clearSession()
+	if err := keyring.Set("Imcrypt", "key", base64.StdEncoding.EncodeToString(encrypted)); err != nil {
+		return err
+	}
+	copy(sessionKey[:], wrappingKey)
+	hasSession = true
+	return nil
 }
 
 func Get() (Data, error) {
-	json, err := keyring.Get("Imcrypt", "key")
+	sessionMu.Lock()
+	defer sessionMu.Unlock()
+
+	if !hasSession {
+		return Data{}, ErrKeyNotFound
+	}
+	encoded, err := keyring.Get("Imcrypt", "key")
 	if err != nil {
 		return Data{}, ErrKeyNotFound
 	}
-
-	data, err := fromJSON(json)
+	encrypted, err := base64.StdEncoding.DecodeString(encoded)
 	if err != nil {
 		return Data{}, err
 	}
+	decrypted, err := crypto.Decrypt(encrypted, sessionKey[:])
+	if err != nil {
+		return Data{}, err
+	}
+	defer clear(decrypted)
 
-	return data, nil
+	return fromJSON(string(decrypted))
 }
 
 func Delete() error {
+	sessionMu.Lock()
+	defer sessionMu.Unlock()
+
+	// Even if the OS cannot delete the entry, its wrapping key is gone.
+	clearSession()
 	return keyring.Delete("Imcrypt", "key")
+}
+
+func clearSession() {
+	clear(sessionKey[:])
+	hasSession = false
 }

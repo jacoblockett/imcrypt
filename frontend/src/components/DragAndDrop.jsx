@@ -7,7 +7,7 @@ import Button from "./Button"
 
 export default function DragAndDrop({ text, type, onData = () => {} }) {
 	async function handleFileSelectThroughDialog() {
-		const [err, data] = await OpenFileDialog("Select an image", type === "image" ? "*.png;*.jpg;*.jpeg" : "*")
+		const [err, data] = await OpenFileDialog("Select an image", type === "image" ? "*" : "*")
 
 		if (err) throw new Error(err)
 

@@ -37,6 +37,8 @@ type App struct {
 	fd *file.File
 	aet *time.Timer
 
+	writeMu sync.Mutex
+	recoveryPath string
 	authMu sync.Mutex
 	passwordVerified bool
 	vaultUnlocked bool
@@ -74,6 +76,8 @@ func (a *App) startup(ctx context.Context) {
 }
 
 func (a *App) shutdown() {
+	a.writeMu.Lock()
+	defer a.writeMu.Unlock()
 	fmt.Println("App has been shut down")
 	a.invalidateAuth()
 	a.discardSnapshot()
@@ -85,6 +89,8 @@ func (a *App) shutdown() {
 
 // API: Closes the current login session and releases the file
 func (a *App) CloseSession() []any {
+	a.writeMu.Lock()
+	defer a.writeMu.Unlock()
 	a.invalidateAuth()
 	a.discardSnapshot()
 	if a.fd != nil {
@@ -113,27 +119,36 @@ func (a *App) OpenFileDialog(title string, pattern string) []any {
 // API: Loads an image from the given file path. The image will be used as
 // the storage path
 func (a *App) LoadImage(path string) []any {
-	// Changing the loaded image invalidates every prior authentication factor.
+	a.writeMu.Lock()
+	defer a.writeMu.Unlock()
 	a.invalidateAuth()
+	a.discardSnapshot()
 	if a.fd != nil {
 		a.fd.Close()
 		a.fd = nil
 	}
-	f, err := fs.OpenFile(path)
-	if err != nil {
-		return []any{err.Error()}
+	a.recoveryPath = ""
+	if file.IsJournal(path) {
+		if _, err := os.Stat(path); err != nil { return []any{err.Error()} }
+		a.recoveryPath = path
+		return []any{nil, "journal"}
 	}
-	valid, err := f.IsPNGOrJPG()
+
+	f, err := fs.OpenFile(path)
+	if err != nil { return []any{err.Error()} }
+	candidates, err := file.Candidates(path)
 	if err != nil {
 		f.Close()
 		return []any{err.Error()}
 	}
-	if !valid {
+	valid, err := f.IsPNGOrJPG()
+	if err != nil || (!valid && len(candidates) == 0) {
 		f.Close()
 		return []any{"file is not a png or jpg image"}
 	}
 	a.fd = f
-	return []any{}
+	if len(candidates) > 0 { return []any{nil, "candidate"} }
+	return []any{nil, "image"}
 }
 
 // API: Brings the window to the top, focusing it (hopefully)
@@ -154,6 +169,8 @@ func (a *App) HasStorage() []any {
 
 // API: Initializes a new Storage struct onto the loaded image
 func (a *App) InitializeStorage(password string) []any {
+	a.writeMu.Lock()
+	defer a.writeMu.Unlock()
 	a.invalidateAuth()
 	if len(password) < 1 {
 		return []any{"password must be at least 1 character long"}
@@ -215,6 +232,8 @@ func (a *App) InitializeStorage(password string) []any {
 
 // API: Generates a TFA secret and QR code image and recovery code, storing the former and returning everything
 func (a *App) GenerateTwoFactorSecret() []any {
+	a.writeMu.Lock()
+	defer a.writeMu.Unlock()
 	key, err := totp.Generate(totp.GenerateOpts{
 		Issuer:      "Imcrypt",
 		AccountName: a.fd.GetName(),
@@ -272,6 +291,8 @@ func (a *App) GenerateTwoFactorSecret() []any {
 
 // API: Deletes TFA from storage
 func (a *App) DeleteTwoFactorSecret() []any {
+	a.writeMu.Lock()
+	defer a.writeMu.Unlock()
 	storage, _, err := a.pull()
 	if err != nil {
 		return []any{err.Error()}
@@ -301,6 +322,8 @@ func (a *App) HasTwoFactorAuthentication() []any {
 
 // API: Validates the incoming code against the stored TFA secret from storage
 func (a *App) ValidateTwoFactorCode(code string, shouldConfirm bool) []any {
+	a.writeMu.Lock()
+	defer a.writeMu.Unlock()
 	store, err := a.readPasswordVerifiedStorage()
 	if err != nil {
 		return []any{err.Error()}
@@ -381,6 +404,8 @@ func (a *App) ReadLoadedImage() []any {
 
 // API: Unlocks the loaded image, returning the loaded database
 func (a *App) UnlockLoadedImage(password string) []any {
+	a.writeMu.Lock()
+	defer a.writeMu.Unlock()
 	a.invalidateAuth()
 	if a.fd == nil {
 		return []any{"no image is loaded"}
@@ -443,6 +468,8 @@ func (a *App) IsAuthenticated() []any {
 // API: Inserts new Items into the Database, returning the newly inserted Items' ids and
 // the updated Database
 func (a *App) InsertItems(itemsToInsert []database.InsertItemsArg) []any {
+	a.writeMu.Lock()
+	defer a.writeMu.Unlock()
 	storage, database, err := a.pull()
 	if err != nil {
 		return []any{err.Error()}
@@ -458,12 +485,9 @@ func (a *App) InsertItems(itemsToInsert []database.InsertItemsArg) []any {
 		return []any{err.Error()}
 	}
 
-	go func() {
-		err = a.fd.WriteImcryptStorage(storage)
-		if err != nil {
-			runtime.EventsEmit(a.ctx, "e_storagewrite", err.Error())
-		}
-	}()
+	if err := a.fd.WriteImcryptStorage(storage); err != nil {
+		return []any{err.Error()}
+	}
 
 	return []any{nil, []any{ids, database}}
 }
@@ -472,6 +496,8 @@ func (a *App) InsertItems(itemsToInsert []database.InsertItemsArg) []any {
 // and the updated Database
 
 func (a *App) InsertGroups(groups []database.Group) []any {
+	a.writeMu.Lock()
+	defer a.writeMu.Unlock()
 	storage, database, err := a.pull()
 	if err != nil {
 		return []any{err.Error()}
@@ -487,18 +513,17 @@ func (a *App) InsertGroups(groups []database.Group) []any {
 		return []any{err.Error()}
 	}
 
-	go func() {
-		err = a.fd.WriteImcryptStorage(storage)
-		if err != nil {
-			runtime.EventsEmit(a.ctx, "e_storagewrite", err.Error())
-		}
-	}()
+	if err := a.fd.WriteImcryptStorage(storage); err != nil {
+		return []any{err.Error()}
+	}
 
 	return []any{nil, []any{ids, database}}
 }
 
 // API: Updates Items in the Database, returning the updated Database
 func (a *App) UpdateItemsById(updates []database.ItemUpdate) []any {
+	a.writeMu.Lock()
+	defer a.writeMu.Unlock()
 	storage, database, err := a.pull()
 	if err != nil {
 		return []any{err.Error()}
@@ -514,18 +539,17 @@ func (a *App) UpdateItemsById(updates []database.ItemUpdate) []any {
 		return []any{err.Error()}
 	}
 
-	go func() {
-		err = a.fd.WriteImcryptStorage(storage)
-		if err != nil {
-			runtime.EventsEmit(a.ctx, "e_storagewrite", err.Error())
-		}
-	}()
+	if err := a.fd.WriteImcryptStorage(storage); err != nil {
+		return []any{err.Error()}
+	}
 
 	return []any{nil, database}
 }
 
 // API: Updates Groups in the Database, returning the updated Database
 func (a *App) UpdateGroupsById(updates []database.GroupUpdate) []any {
+	a.writeMu.Lock()
+	defer a.writeMu.Unlock()
 	storage, database, err := a.pull()
 	if err != nil {
 		return []any{err.Error()}
@@ -541,18 +565,17 @@ func (a *App) UpdateGroupsById(updates []database.GroupUpdate) []any {
 		return []any{err.Error()}
 	}
 
-	go func() {
-		err = a.fd.WriteImcryptStorage(storage)
-		if err != nil {
-			runtime.EventsEmit(a.ctx, "e_storagewrite", err.Error())
-		}
-	}()
+	if err := a.fd.WriteImcryptStorage(storage); err != nil {
+		return []any{err.Error()}
+	}
 
 	return []any{nil, database}
 }
 
 // API: Deletes Items from the Database, returning the updated Database
 func (a *App) DeleteItemsById(ids []string) []any {
+	a.writeMu.Lock()
+	defer a.writeMu.Unlock()
 	storage, database, err := a.pull()
 	if err != nil {
 		return []any{err.Error()}
@@ -568,18 +591,17 @@ func (a *App) DeleteItemsById(ids []string) []any {
 		return []any{err.Error()}
 	}
 
-	go func() {
-		err = a.fd.WriteImcryptStorage(storage)
-		if err != nil {
-			runtime.EventsEmit(a.ctx, "e_storagewrite", err.Error())
-		}
-	}()
+	if err := a.fd.WriteImcryptStorage(storage); err != nil {
+		return []any{err.Error()}
+	}
 
 	return []any{nil, database}
 }
 
 // API: Deletes Groups from the Database, returning the updated Database
 func (a *App) DeleteGroupsById(ids []string) []any {
+	a.writeMu.Lock()
+	defer a.writeMu.Unlock()
 	storage, database, err := a.pull()
 	if err != nil {
 		return []any{err.Error()}
@@ -595,12 +617,9 @@ func (a *App) DeleteGroupsById(ids []string) []any {
 		return []any{err.Error()}
 	}
 
-	go func() {
-		err = a.fd.WriteImcryptStorage(storage)
-		if err != nil {
-			runtime.EventsEmit(a.ctx, "e_storagewrite", err.Error())
-		}
-	}()
+	if err := a.fd.WriteImcryptStorage(storage); err != nil {
+		return []any{err.Error()}
+	}
 
 	return []any{nil, database}
 }

@@ -1,13 +1,17 @@
-# Branch reason — Fix 5C: vault data integrity on crashes and write failures
+# Branch reason — Fix 5C: interruption-safe vault persistence
 
 ## Problem
+In-place steganographic image writes truncate the only vault copy before encoding can finish, and ordinary database mutations write on background goroutines, permitting lost updates and premature success responses.
 
-`backend/file/file.go` truncates the existing image before steganographically writing a replacement, so process termination or write failure can corrupt the only vault copy. `app.go` also starts database writes in goroutines and returns success before persistence, allowing out-of-order writes and missing error propagation.
+## Fix
+Serialize the complete database read–modify–encrypt–save operations. Prepare and verify steganographic output in memory. Before changing the original file, persist an encrypted, authenticated rollback journal containing its complete pre-write image; verify the journal and sync it. Then update, sync, and verify the original image before removing the journal.
 
-## Intended work (deferred)
+Journals are short-lived, use unrelated random extensionless filenames in the original image directory, and contain no recognizable plaintext image signature. Their embedded original filename, vault identifier, creation time, and old/new image hashes are encrypted and authenticated. They can be opened independently with only the master password and used to reconstruct a deleted or damaged image.
 
-After a separate design review and approval: make vault updates interruption-safe (such as a validated same-directory temporary-file replacement), serialize database mutations and disk writes in order, surface write errors truthfully, and ensure normal shutdown does not discard pending saves. Preserve existing data format, offline behavior, UX, and supported platforms.
+When an image is opened and matching encrypted journals exist, require a recovery decision. Declining restoration leads to a separate keep/delete question, with explicit deletion confirmation. A journal the user elects to keep blocks additional writes rather than being silently overwritten.
 
-## Scope boundary
+## Scope
+Preserve existing vault format, cryptography, steganography library, OS keyring, offline file portability, and ordinary UI behavior. No new dependencies, separate background worker, permanent backup system, network access, or OS-specific file replacement.
 
-Do not make keyring/session-credential changes from 5A or 5B. No implementation changes yet; this branch records the reserved scope.
+## Validation
+Verify round trips, wrong passwords, tamper rejection, incomplete writes, missing original image, journal discovery, refusing unresolved writes, serialized operations, TOTP saves, and Windows Wails integration. Crash recovery cannot promise durability against every storage-device or filesystem failure.

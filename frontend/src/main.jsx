@@ -7,6 +7,7 @@ import EncryptText from "./pages/Encrypt/Text"
 import EncryptAuth from "./pages/Encrypt/Auth"
 import Home from "./pages/Home"
 import Open from "./pages/Open"
+import Recovery from "./pages/Recovery"
 // import Startup from "./pages/Startup"
 import Redirect from "./components/Redirect"
 import Router, { Route, Switch } from "crossroad"
@@ -28,6 +29,7 @@ root.render(
 			<Switch>
 				<Route path="/" component={Open} />
 				<Route path="/open" component={Open} />
+				<Route path="/recover" component={Recovery} />
 				<Route path="/decrypt/text" component={DecryptText} />
 				<Route path="/decrypt/auth" component={DecryptAuth} />
 				<Route path="/decrypt/lost" component={DecryptLost} />

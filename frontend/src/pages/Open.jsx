@@ -18,8 +18,13 @@ export default function Open() {
 			throw new Error("Expected paths to be an Array with 1 string.")
 		}
 
-		const [loadErr] = await LoadImage(paths[0])
+		const [loadErr, kind] = await LoadImage(paths[0])
 		if (loadErr) throw loadErr
+		useLoadedImageState.setState({ binary: "" })
+		if (kind === "journal" || kind === "candidate") {
+			setPath("/recover", { mode: "replace" })
+			return
+		}
 
 		const [existsErr, hasStorage] = await HasStorage()
 		if (existsErr) throw existsErr
@@ -38,7 +43,7 @@ export default function Open() {
 
 	return (
 		<div id="open" className="page">
-			<DragAndDrop type="image" text="Drag and drop an image to unlock or use as a vault." onData={handleData} />
+			<DragAndDrop type="image" text="Drag and drop an image or recovery journal to open." onData={handleData} />
 		</div>
 	)
 }
