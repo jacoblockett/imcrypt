@@ -140,3 +140,60 @@ func TestJournalSetupFailureDoesNotModifyImage(t *testing.T) {
 		t.Fatalf("journal failure left unexpected recovery files: %v %v", candidates, err)
 	}
 }
+
+func TestArgon2idJournalRoundTripWithoutKeyring(t *testing.T) {
+	path, original, _, store := recoveryFixture(t)
+	store.KDFVersion = crypto.KDFArgon2id
+	store.PasswordSalt = []byte("0123456789abcdef")
+	store.EncryptionSalt = []byte("fedcba9876543210")
+	passwordKey, err := crypto.PasswordKey([]byte("master-password"), store.PasswordSalt, store.KDFVersion)
+	if err != nil { t.Fatal(err) }
+	if err := key.Set(store.Id, passwordKey); err != nil { t.Fatal(err) }
+
+	journal, err := newJournal(path, original, []byte("new image"), store.Id, store.PasswordSalt, store.KDFVersion)
+	if err != nil { t.Fatal(err) }
+	raw, err := os.ReadFile(journal)
+	if err != nil { t.Fatal(err) }
+	if !bytes.HasPrefix(raw, []byte(journalArgonPrefix)) { t.Fatal("new journal has no format marker") }
+	if bytes.Contains(raw, original) { t.Fatal("new journal exposes original image") }
+	_ = key.Delete()
+
+	if _, _, err := FindRecovery(journal, "wrong-password"); err == nil {
+		t.Fatal("incorrect master password authenticated new journal")
+	}
+	found, rec, err := FindRecovery(path, "master-password")
+	if err != nil || found != journal || rec == nil || rec.Version != 2 {
+		t.Fatalf("new journal could not be recovered: %q %#v %v", found, rec, err)
+	}
+	if err := os.Truncate(path, 0); err != nil { t.Fatal(err) }
+	restored, err := RestoreRecovery(journal, "master-password")
+	if err != nil || restored != path { t.Fatalf("restore: %q %v", restored, err) }
+	got, err := os.ReadFile(path)
+	if err != nil || !bytes.Equal(got, original) { t.Fatalf("original image not recovered: %v", err) }
+}
+
+func TestArgon2idJournalBlocksUnresolvedSaves(t *testing.T) {
+	path, _, _, store := recoveryFixture(t)
+	store.KDFVersion = crypto.KDFArgon2id
+	store.PasswordSalt = []byte("0123456789abcdef")
+	store.EncryptionSalt = []byte("fedcba9876543210")
+	passwordKey, err := crypto.PasswordKey([]byte("master-password"), store.PasswordSalt, store.KDFVersion)
+	if err != nil { t.Fatal(err) }
+	if err := key.Set(store.Id, passwordKey); err != nil { t.Fatal(err) }
+
+	f, err := os.OpenFile(path, os.O_RDWR, 0600)
+	if err != nil { t.Fatal(err) }
+	defer f.Close()
+	vault := &File{File: f, Path: path}
+	if err := vault.WriteImcryptStorage(store); err != nil { t.Fatal(err) }
+	committed, err := os.ReadFile(path)
+	if err != nil { t.Fatal(err) }
+	journal, err := newJournal(path, committed, []byte("future image"), store.Id, store.PasswordSalt, store.KDFVersion)
+	if err != nil { t.Fatal(err) }
+	if err := vault.WriteImcryptStorage(store); err == nil {
+		t.Fatal("new-format unresolved journal did not block save")
+	}
+	after, err := os.ReadFile(path)
+	if err != nil || !bytes.Equal(after, committed) { t.Fatal("rejected save changed image") }
+	if err := RemoveRecovery(journal, "master-password"); err != nil { t.Fatal(err) }
+}
