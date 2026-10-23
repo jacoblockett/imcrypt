@@ -95,8 +95,8 @@ func (f *File) WriteImcryptStorage(store *storage.Storage) error {
 
 	k, err := key.Get()
 	if err != nil { return err }
-	if err := checkPending(f.Path, k, store.PasswordSalt); err != nil { return err }
-	journalPath, err := newJournal(f.Path, original, prepared.Bytes(), store.Id, store.PasswordSalt)
+	if err := checkPending(f.Path, k, store.PasswordSalt, store.KDFVersion); err != nil { return err }
+	journalPath, err := newJournal(f.Path, original, prepared.Bytes(), store.Id, store.PasswordSalt, store.KDFVersion)
 	if err != nil { return err }
 
 	// The synced recovery journal remains on disk if any step below fails.
