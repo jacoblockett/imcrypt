@@ -57,7 +57,7 @@ func TestRecoveryCrashChild(t *testing.T) {
 		t.Fatal(err)
 	}
 	prepared := output.Bytes()
-	journal, err := newJournal(path, original, prepared, store.Id, store.PasswordSalt)
+	journal, err := newJournal(path, original, prepared, store.Id, store.PasswordSalt, store.KDFVersion)
 	if err != nil { t.Fatal(err) }
 	if !IsJournal(journal) { t.Fatal("invalid journal name") }
 	if stage == "journal-synced" {
