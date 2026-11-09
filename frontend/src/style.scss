@@ -1184,7 +1184,13 @@ input[type="date"] + .action-button-wrapper svg {
 			margin-top: auto;
 			margin-bottom: 2em;
 
-			div {
+			> button {
+				width: 100%;
+				justify-content: flex-start;
+				font-size: 1em;
+			}
+
+			> div, > button {
 				margin-bottom: 0.25em;
 				border-radius: 4px;
 				height: 2em;
