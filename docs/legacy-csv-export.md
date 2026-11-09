@@ -20,7 +20,7 @@ UTF-8 CSV, with one header and three `record_type` values:
 Columns (in order):
 
 ```text
-record_type,id,created,updated,type,title,archived,email,username,password,password_created,previous_passwords_json,websites_json,two_factor_secret,notes,ruleset_json,name,group_item_ids_json,session_length_ms
+record_type,id,created,updated,type,title,archived,email,username,password,password_created,previous_passwords_json,websites_json,two_factor_secret,notes,ruleset_json,name,group_item_ids_json,session_length_ms,record_json
 ```
 
 - `id` contains the original item or group ID. Groups reference item IDs in
@@ -28,8 +28,12 @@ record_type,id,created,updated,type,title,archived,email,username,password,passw
 - `previous_passwords_json`, `websites_json`, and `group_item_ids_json`
   contain JSON arrays.
 - `ruleset_json` contains the complete JSON ruleset object.
-- All other values are literal text. CSV escaping protects embedded commas,
-  quotation marks, and newlines without modifying passwords or notes.
+- All other displayed columns are literal text. CSV escaping protects embedded
+  commas, quotation marks, and newlines.
+- `record_json` is the authoritative full JSON object for the item, group, or
+  settings record. A future importer should prefer this column to reconstruct
+  the exact values, including CRLF characters that some CSV readers normalize
+  in the human-readable columns.
 - Dates are stored as original Unix seconds; `session_length_ms` is milliseconds.
 - Blank cells are not applicable to that record type.
 
