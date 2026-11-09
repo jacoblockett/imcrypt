@@ -86,6 +86,11 @@ func TestEncodeDatabaseCSVPreservesAllDatabaseFields(t *testing.T) {
 		field(itemRow, "two_factor_secret") != login.TwoFactorSecret || field(itemRow, "notes") != login.Notes {
 		t.Fatal("some item scalar values were lost")
 	}
+	var reconstructed database.Item
+	if err := json.Unmarshal([]byte(field(itemRow, "record_json")), &reconstructed); err != nil ||
+		!reflect.DeepEqual(reconstructed, login) {
+		t.Fatalf("canonical item record changed: %v", err)
+	}
 	var previous []string
 	if err := json.Unmarshal([]byte(field(itemRow, "previous_passwords_json")), &previous); err != nil ||
 		!reflect.DeepEqual(previous, login.PrevPasswords) {
@@ -110,6 +115,11 @@ func TestEncodeDatabaseCSVPreservesAllDatabaseFields(t *testing.T) {
 		field(groupRow, "name") != group.Name {
 		t.Fatal("group fields changed")
 	}
+	var recoveredGroup database.Group
+	if err := json.Unmarshal([]byte(field(groupRow, "record_json")), &recoveredGroup); err != nil ||
+		!reflect.DeepEqual(recoveredGroup, group) {
+		t.Fatalf("canonical group record changed: %v", err)
+	}
 	var members []string
 	if err := json.Unmarshal([]byte(field(groupRow, "group_item_ids_json")), &members); err != nil ||
 		!reflect.DeepEqual(members, group.Items) {
@@ -118,8 +128,34 @@ func TestEncodeDatabaseCSVPreservesAllDatabaseFields(t *testing.T) {
 	if field(records["settings:"], "session_length_ms") != "1234567" {
 		t.Fatal("session setting lost")
 	}
+	var recoveredSettings database.Settings
+	if err := json.Unmarshal([]byte(field(records["settings:"], "record_json")), &recoveredSettings); err != nil ||
+		!reflect.DeepEqual(recoveredSettings, db.Settings) {
+		t.Fatalf("canonical settings record changed: %v", err)
+	}
 	if !strings.Contains(string(output), "日本語") {
 		t.Fatal("UTF-8 characters lost")
+	}
+}
+
+func TestEncodeDatabaseCSVPreservesCRLFInCanonicalRecord(t *testing.T) {
+	db := database.NewDatabase()
+	original := database.Item{Type: database.LOGIN_ITEM, Title: "Line endings", Password: "p\\r\\nq", Notes: "first\\r\\nsecond"}
+	db.Items["a"] = original
+	data, err := encodeDatabaseCSV(&db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rows, err := csv.NewReader(bytes.NewReader(data)).ReadAll()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var recovered database.Item
+	if err := json.Unmarshal([]byte(rows[1][19]), &recovered); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(recovered, original) {
+		t.Fatal("canonical record did not preserve CRLF text")
 	}
 }
 
