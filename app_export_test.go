@@ -140,7 +140,7 @@ func TestEncodeDatabaseCSVPreservesAllDatabaseFields(t *testing.T) {
 
 func TestEncodeDatabaseCSVPreservesCRLFInCanonicalRecord(t *testing.T) {
 	db := database.NewDatabase()
-	original := database.Item{Type: database.LOGIN_ITEM, Title: "Line endings", Password: "p\\r\\nq", Notes: "first\\r\\nsecond"}
+	original := database.Item{Type: database.LOGIN_ITEM, Title: "Line endings", Password: "p\r\nq", Notes: "first\r\nsecond"}
 	db.Items["a"] = original
 	data, err := encodeDatabaseCSV(&db)
 	if err != nil {
