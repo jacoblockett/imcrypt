@@ -8,6 +8,7 @@ import PersonID from "../components/svg/PersonID"
 import Note from "../components/svg/Note"
 import BankCard from "../components/svg/BankCard"
 import Import from "../components/svg/Import"
+import Export from "../components/svg/Export"
 import Plus from "../components/svg/Plus"
 import Generator from "../components/svg/Generator"
 import Gear from "../components/svg/Gear"
@@ -30,7 +31,7 @@ import ClipboardCheck from "../components/svg/ClipboardCheck"
 import Navigate from "../components/svg/Navigate"
 import Key from "../components/svg/Key"
 import { format, formatInTimeZone } from "date-fns-tz"
-import { OpenURLInBrowser, CloseSession, DeleteTwoFactorSecret } from "../../wailsjs/go/main/App"
+import { OpenURLInBrowser, CloseSession, DeleteTwoFactorSecret, ExportDatabaseCSV } from "../../wailsjs/go/main/App"
 import ProfilePicture from "../components/ProfilePicture"
 import Fuse from "fuse.js"
 import Dropdown from "../components/Dropdown"
@@ -90,6 +91,7 @@ export default function Home() {
 	const toast = useToast()
 	const pageRef = useRef()
 	const itemDragCount = useRef()
+	const exportInProgress = useRef(false)
 	const [, setPath] = usePath()
 	const confirm = useConfirm()
 
@@ -431,6 +433,20 @@ export default function Home() {
 		}
 	}
 
+	async function handleExportCSV() {
+		if (exportInProgress.current) return
+		exportInProgress.current = true
+		try {
+			const [err, exported, itemCount, groupCount] = await ExportDatabaseCSV()
+			if (err) return toast.showError(`Export failed: ${err}`)
+			if (exported) toast.showInfo(`Exported ${itemCount} items and ${groupCount} groups to an unencrypted CSV.`)
+		} catch (err) {
+			toast.showError(`Export failed: ${err instanceof Error ? err.message : String(err)}`)
+		} finally {
+			exportInProgress.current = false
+		}
+	}
+
 	async function handleCloseSession() {
 		await CloseSession()
 		flushSync(() => setPath("/", { mode: "replace" }))
@@ -546,6 +562,9 @@ export default function Home() {
 					</div>
 				</div>
 				<div className="additional-functions">
+					<Button className="export-csv-button" onClick={handleExportCSV} title="Save all vault data as plaintext CSV">
+						<Export /> <span>Export Vault (CSV)</span>
+					</Button>
 					{/* No settings for now - can't think of anything immediately useful */}
 					{/* <div tabIndex={0}>
 						<Gear /> <span>Settings</span>
