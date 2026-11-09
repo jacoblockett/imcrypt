@@ -16,11 +16,13 @@ import (
 
 // The record_type column distinguishes items, groups, and settings. JSON inside
 // CSV cells preserves nested fields without losing arrays, rulesets, or order.
+// record_json is the authoritative snapshot for exact restoration of all fields,
+// including carriage returns that some CSV readers normalize inside text cells.
 var exportCSVColumns = []string{
 	"record_type", "id", "created", "updated", "type", "title", "archived",
 	"email", "username", "password", "password_created", "previous_passwords_json",
 	"websites_json", "two_factor_secret", "notes", "ruleset_json", "name",
-	"group_item_ids_json", "session_length_ms",
+	"group_item_ids_json", "session_length_ms", "record_json",
 }
 
 func exportJSONField(value any) (string, error) {
@@ -61,13 +63,17 @@ func encodeDatabaseCSV(db *database.Database) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
+		record, err := exportJSONField(item)
+		if err != nil {
+			return nil, err
+		}
 		row := []string{
 			"item", id, strconv.FormatInt(item.Created, 10),
 			strconv.FormatInt(item.Updated, 10), item.Type, item.Title,
 			strconv.FormatBool(item.Archived), item.Email, item.Username,
 			item.Password, strconv.FormatInt(item.PasswordCreated, 10),
 			previous, websites, item.TwoFactorSecret, item.Notes, ruleset,
-			"", "", "",
+			"", "", "", record,
 		}
 		if err := writer.Write(row); err != nil {
 			return nil, err
@@ -93,6 +99,11 @@ func encodeDatabaseCSV(db *database.Database) ([]byte, error) {
 		row[3] = strconv.FormatInt(group.Updated, 10)
 		row[16] = group.Name
 		row[17] = itemIDs
+		record, err := exportJSONField(group)
+		if err != nil {
+			return nil, err
+		}
+		row[19] = record
 		if err := writer.Write(row); err != nil {
 			return nil, err
 		}
@@ -101,6 +112,11 @@ func encodeDatabaseCSV(db *database.Database) ([]byte, error) {
 	settings := make([]string, len(exportCSVColumns))
 	settings[0] = "settings"
 	settings[18] = strconv.Itoa(db.Settings.SessionLength)
+	record, err := exportJSONField(db.Settings)
+	if err != nil {
+		return nil, err
+	}
+	settings[19] = record
 	if err := writer.Write(settings); err != nil {
 		return nil, err
 	}
